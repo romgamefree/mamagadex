@@ -3,7 +3,7 @@ import {
   CommentRepliesResponse,
   RecentCommentListResponse,
 } from "@/types";
-import { axios } from "./axios";
+import { supabase } from './supabase';
 
 export const storeComment = async (body: {
   content: string;
@@ -11,40 +11,41 @@ export const storeComment = async (body: {
   typeId: string;
   parentId: number;
 }) => {
-  const { data } = await axios({
-    url: "/api/comment/store",
-    method: "POST",
-    data: {
+  const { data, error } = await supabase
+    .from('comments')
+    .insert({
       content: body.content,
       type: body.type,
       type_id: body.typeId,
       parent_id: body.parentId,
-    },
-  });
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
   return data;
 };
 
 export const updateComment = async (body: { content: string; id: number }) => {
-  const { data } = await axios({
-    url: "/api/comment/update",
-    method: "POST",
-    data: {
-      content: body.content,
-      id: body.id,
-    },
-  });
+  const { data, error } = await supabase
+    .from('comments')
+    .update({ content: body.content })
+    .eq('id', body.id)
+    .select()
+    .single();
+
+  if (error) throw error;
   return data;
 };
 
 export const deleteComment = async (body: { id: number }) => {
-  const { data } = await axios({
-    url: "/api/comment/delete",
-    method: "POST",
-    data: {
-      id: body.id,
-    },
-  });
-  return data;
+  const { error } = await supabase
+    .from('comments')
+    .delete()
+    .eq('id', body.id);
+
+  if (error) throw error;
+  return { success: true };
 };
 
 export const getCommentList = async (params: {
@@ -53,34 +54,38 @@ export const getCommentList = async (params: {
   page?: number;
   limit?: number;
 }) => {
-  const { data } = await axios<CommentListResponse>({
-    url: "/api/comment/list",
-    params: {
-      type: params.type,
-      type_id: params.typeId,
-      page: params.page || 1,
-    },
-  });
-  return data;
+  const { data, error, count } = await supabase
+    .from('comments')
+    .select('*, user:users(*)', { count: 'exact' })
+    .eq('type', params.type)
+    .eq('type_id', params.typeId)
+    .is('parent_id', null)
+    .order('created_at', { ascending: false })
+    .range((params.page || 1) * (params.limit || 10) - (params.limit || 10), (params.page || 1) * (params.limit || 10) - 1);
+
+  if (error) throw error;
+  return { data, total: count };
 };
 
 export const getCommentReplyList = async (params: { lastId: number }) => {
-  const { data } = await axios<CommentRepliesResponse>({
-    url: "/api/comment/fetch-reply",
-    data: {
-      last_id: params.lastId,
-    },
-    method: "POST",
-  });
-  return data;
+  const { data, error } = await supabase
+    .from('comments')
+    .select('*, user:users(*)')
+    .eq('parent_id', params.lastId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return { data };
 };
 
 export const getRecentCommentList = async (params: { limit: number }) => {
-  const { data } = await axios<RecentCommentListResponse>({
-    url: "/api/comment/recent",
-    params: {
-      limit: params.limit,
-    },
-  });
-  return data;
+  const { data, error } = await supabase
+    .from('comments')
+    .select('*, user:users(*)')
+    .is('parent_id', null)
+    .order('created_at', { ascending: false })
+    .limit(params.limit);
+
+  if (error) throw error;
+  return { data };
 };

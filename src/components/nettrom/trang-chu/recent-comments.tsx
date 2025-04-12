@@ -1,20 +1,20 @@
 "use client";
 
 import { twMerge } from "tailwind-merge";
-
-import useRecentComments from "@/hooks/core/useRecentCommentList";
 import { FaComment } from "react-icons/fa";
-import Markdown from "../Markdown";
+import useRecentComments from "@/hooks/core/useRecentCommentList";
 import { RecentCommentResponse } from "@/types";
-import Link from "next/link";
 import { Constants } from "@/constants";
 import { Utils } from "@/utils";
+import Link from "next/link";
+import Markdown from "../Markdown";
 import ReadMore from "../see-more";
 import Skeleton from "react-loading-skeleton";
 import { ErrorDisplay } from "../error-display";
 
 export default function RecentComments() {
   const { data, error, isLoading, mutate } = useRecentComments();
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -24,11 +24,21 @@ export default function RecentComments() {
         </h2>
       </div>
 
-      {isLoading
-        ? [...Array(15)].map((_, index) => <CommentSkeleton key={index} />)
-        : data?.comments.map((comment) => (
+      {isLoading && (
+        <div className="space-y-4">
+          {[...Array(15)].map((_, index) => (
+            <CommentSkeleton key={index} />
+          ))}
+        </div>
+      )}
+
+      {!isLoading && !error && data?.comments && (
+        <div className="space-y-4">
+          {data.comments.map((comment) => (
             <Comment key={comment.id} comment={comment} />
           ))}
+        </div>
+      )}
 
       {error && <ErrorDisplay error={error} refresh={mutate} />}
     </div>
@@ -68,8 +78,9 @@ function Comment({ comment }: { comment: RecentCommentResponse }) {
   const userBanned = comment.user.display_roles.includes(
     Constants.Roles.BANNED,
   );
+
   return (
-    <div key={comment.id}>
+    <div>
       <div className="mb-2">
         <div className="line-clamp-2 font-bold">
           <Link
@@ -111,6 +122,7 @@ function Comment({ comment }: { comment: RecentCommentResponse }) {
           <img
             className={twMerge("h-10 w-10 rounded-full", userBanned && "blur")}
             src={Utils.Url.getAvatarUrl(comment.user.avatar_path)}
+            alt={`${comment.user.name}'s avatar`}
           />
           <div
             className={twMerge(

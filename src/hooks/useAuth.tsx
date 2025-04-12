@@ -1,14 +1,12 @@
-import useSWR from "swr";
 import { useCallback, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useRouter } from "nextjs-toploader/app";
+import { User } from '@supabase/supabase-js';
 
-import { axios } from "@/api/core";
-import { GetUserResponse } from "@/types";
+import { auth } from "@/api/core/auth";
+import { supabase } from "@/api/core/supabase";
 import { Constants } from "@/constants";
-import { AppApi } from "@/api";
-
-import { useCookies } from "./useCookies";
+import { useState } from "react";
 
 export const useAuth = ({
   middleware,
@@ -20,119 +18,92 @@ export const useAuth = ({
   redirectIfNotAuthenticated?: string;
 } = {}) => {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
 
-  const userIdValues = useCookies<number>("userId", 0, 0, {
-    daysUntilExpiration: 1,
-  });
+  useEffect(() => {
+    // Initial user fetch
+    auth.getUser().then(user => setUser(user)).catch(() => setUser(null));
 
-  const { data: user, mutate } = useSWR("/api/user", async () => {
-    try {
-      const { data } = await axios.get<GetUserResponse>("/api/user");
-      if (data?.user) {
-        userIdValues.setState(data.user.id);
+    // Set up realtime subscription
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setUser(session.user);
       } else {
-        userIdValues.resetState();
+        setUser(null);
       }
-      return data.user;
-    } catch {}
-    userIdValues.resetState();
-    return null;
-  });
+    });
 
-  const csrf = () => axios.get("/sanctum/csrf-cookie");
+    return () => subscription.unsubscribe();
+  }, []);
 
-  const signup = async ({
-    ...props
-  }: {
+  const signup = async (props: {
     email: string;
     password: string;
     name: string;
     password_confirmation: string;
     "cf-turnstile-response": string;
   }) => {
-    await csrf();
-
-    await axios.post("/register", props);
-
-    await mutate();
+    await auth.signUp(props);
+    toast("Đăng ký thành công");
   };
 
-  const login = async ({
-    ...props
-  }: {
+  const login = async (props: {
     email: string;
     password: string;
     remember: boolean;
     "cf-turnstile-response": string;
   }) => {
-    await csrf();
-
-    await axios({
-      method: "POST",
-      url: "/login",
-      data: props,
-    });
-
-    await mutate();
+    await auth.login(props);
+    toast("Đăng nhập thành công");
   };
 
   const forgotPassword = async (data: {
     email: string;
     "cf-turnstile-response": string;
   }) => {
-    await csrf();
-
-    try {
-      await axios.post("/forgot-password", data);
-    } catch (error) {
-      throw error;
-    }
+    await auth.forgotPassword(data);
+    toast("Đã gửi email khôi phục mật khẩu");
   };
 
-  const resetPassword = async ({
-    ...props
-  }: {
+  const resetPassword = async (props: {
     email: string;
     password: string;
     password_confirmation: string;
     token: string;
   }) => {
-    await csrf();
-
-    await axios.post("/reset-password", { ...props });
-
+    await auth.resetPassword(props);
+    toast("Đổi mật khẩu thành công");
     router.push(Constants.Routes.login);
   };
 
-  const resendEmailVerification = async (data: {
-    "cf-turnstile-response": string;
-  }) => {
-    await axios.post("/email/verification-notification", data);
+  const resendEmailVerification = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) throw new Error('User not found');
+    
+    await supabase.auth.resend({
+      type: 'signup',
+      email: user.email,
+    });
+    toast("Đã gửi lại email xác thực");
   };
 
   const logout = useCallback(async () => {
-    await axios.post("/logout");
-
+    await auth.logout();
     toast("Đăng xuất thành công");
+  }, []);
 
-    await mutate();
-  }, [mutate]);
-
-  const changePassword = useCallback(
-    async (data: {
-      oldPassword: string;
-      password: string;
-      confirmPassword: string;
-    }) => {
-      await AppApi.User.changePassword({
-        current_password: data.oldPassword,
-        password: data.password,
-        password_confirmation: data.confirmPassword,
-      });
-      await mutate();
-    },
-    [mutate],
-  );
+  const changePassword = useCallback(async (data: {
+    oldPassword: string;
+    password: string;
+    confirmPassword: string;
+  }) => {
+    await auth.changePassword({
+      current_password: data.oldPassword,
+      password: data.password,
+      password_confirmation: data.confirmPassword,
+    });
+    toast("Đổi mật khẩu thành công");
+  }, []);
 
   useEffect(() => {
     if (middleware === "guest" && user) {
@@ -161,6 +132,5 @@ export const useAuth = ({
     resendEmailVerification,
     logout,
     changePassword,
-    mutate,
   };
 };

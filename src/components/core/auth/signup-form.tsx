@@ -4,16 +4,14 @@ import Link from "next/link";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { isAxiosError } from "axios";
-import { toast } from "react-toastify";
-import { useAuth } from "@/hooks/useAuth";
 import { Constants } from "@/constants";
 import TurnstileWidget from "@/components/turnstile-widget";
 import { Utils } from "@/utils";
 import Iconify from "@/components/iconify";
+import { useSignUp, SignUpFormData } from "@/hooks/core/useSignUp";
 
 // Define the form input types
-interface ISignupForm {
+interface ISignUpForm extends SignUpFormData {
   name: string;
   email: string;
   password: string;
@@ -52,30 +50,20 @@ const signupSchema = yup.object().shape({
 });
 
 export default function SignUpForm() {
-  const { signup } = useAuth({
-    middleware: "guest",
-  });
+  const { signUp, isLoading } = useSignUp();
 
   const {
     register,
     handleSubmit,
     setValue,
-    formState: { errors, isSubmitting },
-  } = useForm<ISignupForm>({
+    formState: { errors },
+  } = useForm<ISignUpForm>({
     resolver: yupResolver(signupSchema),
   });
 
-  const onSubmit: SubmitHandler<ISignupForm> = async (data) => {
-    try {
-      await signup({ ...data, password_confirmation: data.confirmPassword });
-    } catch (error) {
-      console.error(error);
-      let message = "Đã có lỗi xảy ra";
-      if (isAxiosError(error)) {
-        message = error.response?.data.message || message;
-      }
-      toast(message, { type: "error" });
-    }
+  const onSubmit: SubmitHandler<ISignUpForm> = async (data) => {
+    const { confirmPassword, acceptTerms, ...signUpData } = data;
+    await signUp(signUpData);
   };
 
   return (
@@ -176,9 +164,9 @@ export default function SignUpForm() {
           <button
             type="submit"
             className="inline-block w-full rounded-md border border-indigo-600 bg-indigo-600 px-5 py-2 text-center align-middle text-base tracking-wide text-white duration-500 hover:border-indigo-700 hover:bg-indigo-700"
-            disabled={isSubmitting}
+            disabled={isLoading}
           >
-            {isSubmitting ? "Đang đăng ký..." : "Đăng ký"}
+            {isLoading ? "Đang đăng ký..." : "Đăng ký"}
           </button>
         </div>
 
