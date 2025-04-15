@@ -6157,7 +6157,8 @@ p {
 }
 
 .reading .reading-detail .fancybox {
-  cursor: url(https://st.nettruyento.com/Data/Sites/1/skins/comic/images/cur_zin.cur),
+  cursor:
+    url(https://st.nettruyento.com/Data/Sites/1/skins/comic/images/cur_zin.cur),
     pointer;
 }
 

@@ -11,6 +11,7 @@ curl -X POST http://localhost:3000/api/truyenqq/crawl \
 ```
 
 Response thành công:
+
 ```json
 {
   "message": "Crawl dữ liệu thành công",
@@ -32,6 +33,7 @@ curl -X PUT http://localhost:3000/api/truyenqq/crawl \
 ```
 
 Response thành công:
+
 ```json
 {
   "message": "Cập nhật chapter thành công",
@@ -44,6 +46,7 @@ Response thành công:
 ## Lỗi thường gặp
 
 ### 1. URL trống
+
 ```json
 {
   "error": "URL truyện không được để trống"
@@ -51,6 +54,7 @@ Response thành công:
 ```
 
 ### 2. Thiếu thông tin chapter
+
 ```json
 {
   "error": "ID truyện và URL chapter không được để trống"
@@ -58,6 +62,7 @@ Response thành công:
 ```
 
 ### 3. Lỗi hệ thống
+
 ```json
 {
   "error": "Đã có lỗi xảy ra khi crawl dữ liệu"

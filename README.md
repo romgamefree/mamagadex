@@ -87,62 +87,58 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/deploym
 - Anh Gián admin Hako
 - Zennomi
 
-
-
-
-
 ======== SUPABASE INIT
 -- Create series table
 CREATE TABLE public.series (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+title TEXT NOT NULL,
+description TEXT,
+created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
 -- Create users table
 CREATE TABLE public.users (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    email TEXT UNIQUE,
-    username TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+email TEXT UNIQUE,
+username TEXT,
+created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
 -- Create comments table
 CREATE TABLE public.comments (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    content TEXT NOT NULL,
-    user_id UUID REFERENCES public.users(id),
-    parent_id UUID REFERENCES public.comments(id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+content TEXT NOT NULL,
+user_id UUID REFERENCES public.users(id),
+parent_id UUID REFERENCES public.comments(id),
+created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
 
 -- Create mangas table
 CREATE TABLE IF NOT EXISTS mangas (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  title TEXT NOT NULL,
-  description TEXT,
-  cover_image TEXT,
-  source_url TEXT UNIQUE NOT NULL,
-  status TEXT,
-  author TEXT,
-  genres TEXT[],
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+title TEXT NOT NULL,
+description TEXT,
+cover_image TEXT,
+source_url TEXT UNIQUE NOT NULL,
+status TEXT,
+author TEXT,
+genres TEXT[],
+created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
+updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
 );
 
 -- Create chapters table
 CREATE TABLE IF NOT EXISTS chapters (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  chapter_number TEXT NOT NULL,
-  title TEXT,
-  source_url TEXT UNIQUE NOT NULL,
-  images TEXT[],
-  manga_id UUID NOT NULL REFERENCES mangas(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+chapter_number TEXT NOT NULL,
+title TEXT,
+source_url TEXT UNIQUE NOT NULL,
+images TEXT[],
+manga_id UUID NOT NULL REFERENCES mangas(id) ON DELETE CASCADE,
+created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
+updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
 );
 
 -- Create indexes
@@ -154,10 +150,9 @@ CREATE INDEX IF NOT EXISTS idx_chapters_source_url ON chapters(source_url);
 CREATE INDEX comments_user_id_idx ON public.comments(user_id);
 CREATE INDEX comments_parent_id_idx ON public.comments(parent_id);
 
-
 ===== CURL CRAWL
 curl --location 'http://localhost:3000/api/truyenqq/crawl' \
 --header 'Content-Type: application/json' \
 --data '{
-    "mangaUrl": "https://truyenqqto.com/truyen-tranh/isekai-tensei-no-boukensha-6865"
-  }'
+"mangaUrl": "https://truyenqqto.com/truyen-tranh/isekai-tensei-no-boukensha-6865"
+}'

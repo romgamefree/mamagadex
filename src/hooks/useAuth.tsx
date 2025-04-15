@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useRouter } from "nextjs-toploader/app";
-import { User } from '@supabase/supabase-js';
+import { User } from "@supabase/supabase-js";
 
 import { auth } from "@/api/core/auth";
 import { supabase } from "@/api/core/supabase";
@@ -22,10 +22,15 @@ export const useAuth = ({
 
   useEffect(() => {
     // Initial user fetch
-    auth.getUser().then(user => setUser(user)).catch(() => setUser(null));
+    auth
+      .getUser()
+      .then((user) => setUser(user))
+      .catch(() => setUser(null));
 
     // Set up realtime subscription
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setUser(session.user);
       } else {
@@ -77,11 +82,13 @@ export const useAuth = ({
   };
 
   const resendEmailVerification = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.email) throw new Error('User not found');
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.email) throw new Error("User not found");
+
     await supabase.auth.resend({
-      type: 'signup',
+      type: "signup",
       email: user.email,
     });
     toast("Đã gửi lại email xác thực");
@@ -92,18 +99,21 @@ export const useAuth = ({
     toast("Đăng xuất thành công");
   }, []);
 
-  const changePassword = useCallback(async (data: {
-    oldPassword: string;
-    password: string;
-    confirmPassword: string;
-  }) => {
-    await auth.changePassword({
-      current_password: data.oldPassword,
-      password: data.password,
-      password_confirmation: data.confirmPassword,
-    });
-    toast("Đổi mật khẩu thành công");
-  }, []);
+  const changePassword = useCallback(
+    async (data: {
+      oldPassword: string;
+      password: string;
+      confirmPassword: string;
+    }) => {
+      await auth.changePassword({
+        current_password: data.oldPassword,
+        password: data.password,
+        password_confirmation: data.confirmPassword,
+      });
+      toast("Đổi mật khẩu thành công");
+    },
+    [],
+  );
 
   useEffect(() => {
     if (middleware === "guest" && user) {

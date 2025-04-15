@@ -14,7 +14,8 @@ export class Constants {
   static readonly TURNSTILE_SITE_KEY =
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!;
   static readonly SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  static readonly SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  static readonly SUPABASE_ANON_KEY =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   static readonly Mangadex = new MangaDexConstants();
   static readonly Nettrom = new NettromConstants();
   static readonly Roles = {

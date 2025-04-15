@@ -7,5 +7,4 @@ export default function useRecentComments() {
     const response = await AppApi.Comment.getRecentCommentList({ limit: 15 });
     return { comments: response.data };
   });
-
 }

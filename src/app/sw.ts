@@ -22,24 +22,24 @@ const serwist = new Serwist({
   runtimeCaching: [
     ...defaultCache,
     {
-      urlPattern: ({ url }) => url.hostname.includes('supabase.co'),
-      handler: 'NetworkOnly',
+      urlPattern: ({ url }) => url.hostname.includes("supabase.co"),
+      handler: "NetworkOnly",
       options: {
-        cacheName: 'supabase-cache',
-        networkTimeoutSeconds: 10
-      }
+        cacheName: "supabase-cache",
+        networkTimeoutSeconds: 10,
+      },
     },
     {
-      urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
-      handler: 'NetworkFirst',
+      urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
+      handler: "NetworkFirst",
       options: {
-        cacheName: 'api-cache',
+        cacheName: "api-cache",
         expiration: {
           maxEntries: 32,
-          maxAgeSeconds: 24 * 60 * 60 // 24 hours
-        }
-      }
-    }
+          maxAgeSeconds: 24 * 60 * 60, // 24 hours
+        },
+      },
+    },
   ],
   fallbacks: {
     entries: [

@@ -268,9 +268,7 @@ export function CommentItem({
           <li>
             <abbr>
               <i className="fa fa-clock-o"> </i>
-              {Utils.Date.formatNowDistance(
-                new Date(comment.created_at),
-              )} trước
+              {Utils.Date.formatNowDistance(new Date(comment.created_at))} trước
             </abbr>
           </li>
         </ul>

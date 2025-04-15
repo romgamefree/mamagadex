@@ -1,70 +1,59 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { TruyenQQCrawler } from '@/api/truyenqq/crawler';
+import { NextResponse } from "next/server";
+import { TruyenQQCrawler } from "@/api/truyenqq/crawler";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const { mangaUrl } = await request.json();
+
     if (!mangaUrl) {
       return NextResponse.json(
-        { error: 'URL truyện không được để trống' },
-        { status: 400 }
+        { error: "URL truyện không được để trống" },
+        { status: 400 },
       );
     }
 
     const crawler = new TruyenQQCrawler();
-
-    // Crawl thông tin truyện
-    const mangaData = await crawler.crawlManga(mangaUrl);
-    
-    // Lưu thông tin truyện vào Supabase
-    const savedManga = await crawler.saveMangaToSupabase(mangaData);
+    const result = await crawler.crawlAndSaveEverything(mangaUrl);
 
     return NextResponse.json({
-      message: 'Crawl dữ liệu thành công',
-      data: savedManga
+      success: true,
+      message: "Crawl dữ liệu thành công",
+      data: result,
     });
   } catch (error: any) {
-    console.error('Lỗi khi crawl dữ liệu:', error);
+    console.error("Lỗi khi crawl dữ liệu:", error);
     return NextResponse.json(
-      { error: error.message || 'Đã có lỗi xảy ra khi crawl dữ liệu' },
-      { status: 500 }
+      {
+        success: false,
+        error: error.message || "Đã có lỗi xảy ra khi crawl dữ liệu",
+        details: error.stack,
+      },
+      { status: 500 },
     );
   }
 }
 
-export async function PUT(request: NextRequest) {
+export async function PUT(request: Request) {
   try {
-    const { mangaId, chapterUrl } = await request.json();
-    if (!mangaId || !chapterUrl) {
+    const body = await request.json();
+    const { mangaUrl } = body;
+
+    if (!mangaUrl) {
       return NextResponse.json(
-        { error: 'ID truyện và URL chapter không được để trống' },
-        { status: 400 }
+        { error: "mangaUrl is required" },
+        { status: 400 },
       );
     }
 
     const crawler = new TruyenQQCrawler();
+    const result = await crawler.crawlAndSaveEverything(mangaUrl);
 
-    // Crawl thông tin chapter
-    const chapterData = await crawler.crawlChapter(chapterUrl, mangaId);
-    
-    // Upload ảnh lên Cloudflare và cập nhật URL
-    const cloudflareImages = await Promise.all(
-      chapterData.images.map(img => crawler.uploadImageToCloudflare(img))
-    );
-    chapterData.images = cloudflareImages;
-
-    // Lưu thông tin chapter vào Supabase
-    const savedChapter = await crawler.saveChapterToSupabase(chapterData);
-
-    return NextResponse.json({
-      message: 'Cập nhật chapter thành công',
-      data: savedChapter
-    });
+    return NextResponse.json(result);
   } catch (error: any) {
-    console.error('Lỗi khi cập nhật chapter:', error);
+    console.error("Error in crawl API:", error);
     return NextResponse.json(
-      { error: error.message || 'Đã có lỗi xảy ra khi cập nhật chapter' },
-      { status: 500 }
+      { error: error.message || "Internal server error" },
+      { status: 500 },
     );
   }
 }

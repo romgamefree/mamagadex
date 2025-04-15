@@ -1,8 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCommentList, storeComment, updateComment, deleteComment } from '@/api/core/comment';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  getCommentList,
+  storeComment,
+  updateComment,
+  deleteComment,
+} from "@/api/core/comment";
 
 export const useCommentList = (params: {
-  type: 'chapter' | 'series';
+  type: "chapter" | "series";
   typeId: string;
   page?: number;
   limit?: number;
@@ -10,7 +15,7 @@ export const useCommentList = (params: {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['comments', params],
+    queryKey: ["comments", params],
     queryFn: () => getCommentList(params),
   });
 
@@ -23,7 +28,7 @@ export const useCommentList = (params: {
         parentId: 0,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments', params] });
+      queryClient.invalidateQueries({ queryKey: ["comments", params] });
     },
   });
 
@@ -31,14 +36,14 @@ export const useCommentList = (params: {
     mutationFn: ({ id, content }: { id: number; content: string }) =>
       updateComment({ id, content }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments', params] });
+      queryClient.invalidateQueries({ queryKey: ["comments", params] });
     },
   });
 
   const { mutate: removeComment } = useMutation({
     mutationFn: (id: number) => deleteComment({ id }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments', params] });
+      queryClient.invalidateQueries({ queryKey: ["comments", params] });
     },
   });
 

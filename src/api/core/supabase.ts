@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-import { Constants } from '@/constants';
+import { createClient } from "@supabase/supabase-js";
+import { Constants } from "@/constants";
 
 const supabase = createClient(
   Constants.SUPABASE_URL,
@@ -9,7 +9,7 @@ const supabase = createClient(
       persistSession: true,
       autoRefreshToken: true,
     },
-  }
+  },
 );
 
 export { supabase };
