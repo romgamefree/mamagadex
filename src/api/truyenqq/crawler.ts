@@ -61,23 +61,40 @@ export class TruyenQQCrawler {
 
   constructor() {}
 
-  private async retryRequest(
-    url: string,
-    maxRetries = 3,
-    delay = 1000,
-  ): Promise<any> {
+  private async retryRequest(url: string, maxRetries = 3, delay = 1000): Promise<any> {
     for (let i = 0; i < maxRetries; i++) {
       try {
-        const response = await axios.get(url, { headers: this.headers });
+        const response = await axios.get(url, { 
+          headers: this.headers,
+          timeout: 5000 // 5 seconds timeout
+        });
         return response;
       } catch (error: any) {
         if (i === maxRetries - 1) throw error;
-        console.log(
-          `Retry attempt ${i + 1} failed, waiting ${delay}ms before next attempt...`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        console.log(`Retry attempt ${i + 1} failed, waiting ${delay}ms before next attempt...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
+  }
+
+  // Helper function to process images in batches
+  private async processBatch<T>(items: T[], batchSize: number, processor: (item: T) => Promise<any>): Promise<any[]> {
+    const results = [];
+    for (let i = 0; i < items.length; i += batchSize) {
+      const batch = items.slice(i, i + batchSize);
+      const batchResults = await Promise.all(
+        batch.map(item => processor(item).catch(error => {
+          console.error('Error processing item:', error);
+          return null;
+        }))
+      );
+      results.push(...batchResults.filter(result => result !== null));
+      // Small delay between batches
+      if (i + batchSize < items.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+    return results;
   }
 
   async crawlManga(url: string): Promise<MangaData> {
@@ -126,11 +143,29 @@ export class TruyenQQCrawler {
       const response = await this.retryRequest(url);
       const $ = cheerio.load(response.data);
 
-      const title = $(".chapter-title").text().trim();
-      const chapterNumber =
-        title.match(/Chapter (\d+(\.\d+)?)/i)?.[1] ||
-        url.match(/chap-(\d+(\.\d+)?)/)?.[1] ||
-        "";
+      // Get chapter number from URL and clean it
+      // URL format: /truyen-tranh/isekai-tensei-no-boukensha-6865-chap-3.html
+      let chapterNumber = url.match(/chap-([\d\.-]+)/)?.[1] || "";
+      // Remove trailing dot if exists
+      chapterNumber = chapterNumber.replace(/\.$/, "");
+
+      // Get publication date from the chapter list page
+      const mangaUrl = url.replace(/\/chap-[\d\.-]+\.html$/, "");
+      const chapterListResponse = await this.retryRequest(mangaUrl);
+      const chapterList$ = cheerio.load(chapterListResponse.data);
+      
+      // Find the publication date for this specific chapter
+      const chapterFileName = url.split('/').pop() || "";
+      const publicationDate = chapterList$(`.works-chapter-item a[href*="${chapterFileName}"]`)
+        .closest('.works-chapter-item')
+        .find('.time-chap')
+        .text()
+        .trim();
+
+      // If publication date is empty, try to get it from the current page
+      const fallbackDate = $('.chapter-title .time').text().trim() || 
+                          $('.chapter-title').next('.time').text().trim() ||
+                          new Date().toISOString().split('T')[0];
 
       // Updated image extraction logic with query parameter cleaning
       const images = $(".page-chapter img")
@@ -162,7 +197,7 @@ export class TruyenQQCrawler {
 
       return {
         chapter_number: chapterNumber,
-        title,
+        title: publicationDate || fallbackDate, // Use fallback date if publication date is empty
         source_url: url,
         images,
         manga_id: mangaId,
@@ -366,43 +401,40 @@ export class TruyenQQCrawler {
   async saveChapterToSupabase(chapterData: ChapterData, mangaTitle: string) {
     try {
       console.log(`\nSaving chapter ${chapterData.chapter_number} images...`);
-      // Save chapter images locally
-      const processedImages = [];
-      for (let i = 0; i < chapterData.images.length; i++) {
-        const imageUrl = chapterData.images[i];
+      
+      // Process images in parallel with batches of 3
+      const processImage = async (imageData: { url: string; index: number }) => {
         try {
-          console.log(
-            `\nProcessing image ${i + 1}/${chapterData.images.length}`,
-          );
-          console.log("URL:", imageUrl);
-
+          console.log(`\nProcessing image ${imageData.index + 1}/${chapterData.images.length}`);
           const localImagePath = await this.saveImageLocally(
-            imageUrl,
+            imageData.url,
             mangaTitle,
             chapterData.chapter_number,
-            i,
-            false, // Not a cover image
+            imageData.index,
+            false
           );
-          processedImages.push(localImagePath);
           console.log("Saved to:", localImagePath);
+          return localImagePath;
         } catch (error) {
-          console.error(
-            `Error saving image ${i + 1}:`,
-            error instanceof Error ? error.message : "Unknown error",
+          console.error(`Error saving image ${imageData.index + 1}:`, 
+            error instanceof Error ? error.message : "Unknown error"
           );
-          continue;
+          return null;
         }
-      }
+      };
 
-      // Only update images array if we have successfully processed images
-      if (processedImages.length > 0) {
-        chapterData.images = processedImages;
-        console.log(
-          `Successfully processed ${processedImages.length}/${chapterData.images.length} images`,
-        );
-      } else {
+      const imageDataArray = chapterData.images.map((url, index) => ({ url, index }));
+      const processedImages = await this.processBatch(imageDataArray, 3, processImage);
+      
+      // Filter out failed images
+      const successfulImages = processedImages.filter(path => path !== null);
+
+      if (successfulImages.length === 0) {
         throw new Error("Failed to save any images for chapter");
       }
+
+      chapterData.images = successfulImages;
+      console.log(`Successfully processed ${successfulImages.length}/${chapterData.images.length} images`);
 
       const { data, error } = await supabase
         .from("chapters")
@@ -411,7 +443,7 @@ export class TruyenQQCrawler {
           chapter_number: chapterData.chapter_number,
           title: chapterData.title,
           source_url: chapterData.source_url,
-          images: chapterData.images,
+          images: successfulImages,
         })
         .select()
         .single();
@@ -566,11 +598,7 @@ export class TruyenQQCrawler {
     return savedManga;
   }
 
-  async crawlChaptersList(
-    mangaUrl: string,
-  ): Promise<
-    Array<{ chapter_number: string; url: string; upload_date: string }>
-  > {
+  async crawlChaptersList(mangaUrl: string): Promise<Array<{ chapter_number: string; url: string; upload_date: string }>> {
     try {
       console.log("Crawling chapters list from:", mangaUrl);
       const response = await this.retryRequest(mangaUrl);
@@ -583,43 +611,83 @@ export class TruyenQQCrawler {
       }> = [];
 
       // Updated selector to match exact HTML structure
-      $(".list_chapter .works-chapter-list .works-chapter-item").each(
-        (_, element) => {
-          const $nameChap = $(element).find(".name-chap a");
-          const $timeChap = $(element).find(".time-chap");
+      $(".list_chapter .works-chapter-list .works-chapter-item").each((_, element) => {
+        const $nameChap = $(element).find(".name-chap a");
+        const $timeChap = $(element).find(".time-chap");
 
-          const href = $nameChap.attr("href") || "";
-          const title = $nameChap.text().trim();
-          const uploadDate = $timeChap.text().trim();
+        const href = $nameChap.attr("href") || "";
+        const title = $nameChap.text().trim();
+        const uploadDate = $timeChap.text().trim();
 
-          // Extract chapter number from title (e.g., "Chương 2.5" -> "2.5")
-          const chapterNumber = title.replace("Chương", "").trim();
+        // Extract chapter number from URL (more reliable)
+        // URL format: /truyen-tranh/isekai-tensei-no-boukensha-6865-chap-3.html
+        let chapterNumber = href.match(/chap-([\d\.-]+)/)?.[1] || "";
+        // Remove trailing dot if exists
+        chapterNumber = chapterNumber.replace(/\.$/, "");
 
-          if (chapterNumber && href) {
-            chapters.push({
-              chapter_number: chapterNumber,
-              url: href.startsWith("http") ? href : `${this.baseUrl}${href}`,
-              upload_date: uploadDate,
-            });
-          }
-        },
-      );
+        if (chapterNumber && href) {
+          chapters.push({
+            chapter_number: chapterNumber,
+            url: href.startsWith("http") ? href : `${this.baseUrl}${href}`,
+            upload_date: uploadDate,
+          });
+        }
+      });
 
       // Sort chapters by number in ascending order (oldest first)
       const sortedChapters = chapters.sort(
-        (a, b) => parseFloat(a.chapter_number) - parseFloat(b.chapter_number),
+        (a, b) => parseFloat(a.chapter_number) - parseFloat(b.chapter_number)
       );
 
       console.log(
         `Found ${sortedChapters.length} chapters:`,
         sortedChapters
           .map((c) => `Chapter ${c.chapter_number} (${c.upload_date})`)
-          .join("\n"),
+          .join("\n")
       );
 
       return sortedChapters;
     } catch (error) {
       console.error("Error crawling chapters list:", error);
+      throw error;
+    }
+  }
+
+  async crawlChapterImages(url: string, mangaId: string): Promise<string[]> {
+    try {
+      console.log("Crawling chapter images:", url);
+      const response = await this.retryRequest(url);
+      const $ = cheerio.load(response.data);
+
+      // Updated image extraction logic with query parameter cleaning
+      const images = $(".page-chapter img")
+        .map((_, el) => {
+          // Try to get image URL in this order: data-original -> data-cdn -> src
+          const src =
+            $(el).attr("data-original") ||
+            $(el).attr("data-cdn") ||
+            $(el).attr("src") ||
+            "";
+
+          // Clean the URL by removing query parameters
+          const cleanUrl = src.trim().split("?")[0];
+
+          return cleanUrl;
+        })
+        .get()
+        .filter((src) => src.length > 0)
+        .map((src) => (src.startsWith("http") ? src : `${this.baseUrl}${src}`));
+
+      console.log(`Found ${images.length} images in chapter`);
+
+      // Validate that we actually found images
+      if (images.length === 0) {
+        throw new Error(`No images found in chapter at URL ${url}`);
+      }
+
+      return images;
+    } catch (error) {
+      console.error("Error crawling chapter images:", error);
       throw error;
     }
   }
@@ -653,57 +721,81 @@ export class TruyenQQCrawler {
       // 4. Xử lý từng chapter
       console.log("\n4. Bắt đầu xử lý các chapter...");
       const savedChapters = [];
-      const failedChapters = [];
+      const failedChapters: Array<{ number: string; url: string; error: string }> = [];
 
       // Process chapters từ cũ đến mới
       const sortedChapters = chapters.sort(
-        (a, b) => parseFloat(a.chapter_number) - parseFloat(b.chapter_number),
+        (a, b) => parseFloat(a.chapter_number) - parseFloat(b.chapter_number)
       );
 
-      for (const chapter of sortedChapters) {
+      // Process chapters in batches of 2
+      const processChapter = async (chapter: any) => {
         try {
           console.log(`\n- Đang xử lý chapter ${chapter.chapter_number}...`);
+          
+          // Crawl images for this chapter
+          const images = await this.crawlChapterImages(chapter.url, savedManga.id);
+          console.log(`  + Tìm thấy ${images.length} ảnh`);
 
-          // 4.1 Crawl chapter
-          const chapterData = await this.crawlChapter(
-            chapter.url,
-            savedManga.id,
-          );
-          console.log(`  + Tìm thấy ${chapterData.images.length} ảnh`);
+          // Save images locally and get local paths
+          const localImagePaths = [];
+          for (let i = 0; i < images.length; i++) {
+            const imageUrl = images[i];
+            try {
+              const localPath = await this.saveImageLocally(
+                imageUrl,
+                mangaData.title,
+                chapter.chapter_number,
+                i,
+                false
+              );
+              localImagePaths.push(localPath);
+              console.log(`  + Đã lưu ảnh ${i + 1} vào: ${localPath}`);
+            } catch (error) {
+              console.error(`  - Lỗi lưu ảnh ${i + 1}:`, error);
+              continue;
+            }
+          }
+          
+          // Save chapter to Supabase with local image paths
+          const { data, error } = await supabase
+            .from("chapters")
+            .insert({
+              manga_id: savedManga.id,
+              chapter_number: chapter.chapter_number,
+              title: chapter.upload_date,
+              source_url: chapter.url,
+              images: localImagePaths,
+            })
+            .select()
+            .single();
 
-          // 4.2 Lưu chapter và ảnh
-          const savedChapter = await this.saveChapterToSupabase(
-            chapterData,
-            mangaData.title,
-          );
+          if (error) throw error;
+          
           console.log("  + Đã lưu chapter thành công");
-
-          savedChapters.push({
+          
+          return {
             number: chapter.chapter_number,
-            title: savedChapter.title,
-            image_count: savedChapter.images.length,
-            local_paths: savedChapter.images,
-          });
-
-          // 4.3 Delay để tránh quá tải server
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+            title: chapter.upload_date,
+            image_count: localImagePaths.length,
+            local_paths: localImagePaths,
+          };
         } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-          console.error(
-            `  - Lỗi xử lý chapter ${chapter.chapter_number}:`,
-            errorMessage,
-          );
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          console.error(`  - Lỗi xử lý chapter ${chapter.chapter_number}:`, errorMessage);
           failedChapters.push({
             number: chapter.chapter_number,
             url: chapter.url,
             error: errorMessage,
           });
-          continue;
+          return null;
         }
-      }
+      };
 
-      // 5. Tổng kết kết quả
+      const processedChapters = await this.processBatch(sortedChapters, 2, processChapter);
+      savedChapters.push(...processedChapters.filter(chapter => chapter !== null));
+
+      // 5. Return results
       const result = {
         manga: {
           id: savedManga.id,
