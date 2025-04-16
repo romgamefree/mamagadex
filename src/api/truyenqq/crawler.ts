@@ -217,7 +217,7 @@ export class TruyenQQCrawler {
   ): Promise<string> {
     try {
       // Create base temp directory if it doesn't exist
-      const baseTempDir = path.join(process.cwd(), "temp");
+      const baseTempDir = path.join(process.cwd(), "public", "temp");
       if (!fs.existsSync(baseTempDir)) {
         await mkdirAsync(baseTempDir, { recursive: true });
       }
@@ -238,6 +238,7 @@ export class TruyenQQCrawler {
 
       let filePath: string;
       let targetDir: string;
+      let relativePath: string;
 
       if (!isForCover && chapterNumber && imageIndex !== undefined) {
         // For chapter images
@@ -260,6 +261,7 @@ export class TruyenQQCrawler {
         // Ensure image index starts from 1 and is sequential
         const filename = `${(imageIndex + 1).toString().padStart(3, "0")}${originalExtension}`;
         filePath = path.join(targetDir, filename);
+        relativePath = `/temp/${mangaSlug}/chapters/chap-${formattedChapterNumber}/${filename}`;
       } else {
         // For cover image
         targetDir = path.join(mangaDir, "cover");
@@ -269,12 +271,13 @@ export class TruyenQQCrawler {
         }
         // Always use jpg for cover image
         filePath = path.join(targetDir, "cover.jpg");
+        relativePath = `/temp/${mangaSlug}/cover/cover.jpg`;
       }
 
       // Check if file already exists
       if (fs.existsSync(filePath)) {
         console.log(`File already exists: ${filePath}`);
-        return filePath;
+        return relativePath;
       }
 
       // Download image with headers
@@ -305,7 +308,8 @@ export class TruyenQQCrawler {
 
       const buffer = Buffer.from(response.data, "binary");
       await writeFileAsync(filePath, buffer);
-      return filePath;
+
+      return relativePath;
     } catch (error) {
       console.error("Error saving image locally:", error);
       throw error;

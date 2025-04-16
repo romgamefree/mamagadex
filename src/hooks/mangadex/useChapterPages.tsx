@@ -1,30 +1,28 @@
 import useSWR from "swr/immutable";
-import { MangadexApi } from "@/api";
+import { createClient } from '@supabase/supabase-js';
 import { useSettingsContext } from "@/contexts/settings";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function useChapterPages(chapterId: string | null) {
   const { dataSaver } = useSettingsContext();
+  
   const { data, isLoading, error } = useSWR(
     chapterId ? ["chapter-pages", chapterId] : null,
-    () =>
-      MangadexApi.AtHome.getAtHomeServerChapterId(chapterId!, {
-        forcePort443: false,
-      }),
-  );
-  const successData =
-    data &&
-    (data.data as MangadexApi.AtHome.GetAtHomeServerChapterIdResponse)?.chapter;
-  const pages = successData
-    ? dataSaver
-      ? successData.dataSaver.map(
-          (originalData) =>
-            `${(data.data as MangadexApi.AtHome.GetAtHomeServerChapterIdResponse).baseUrl}/data-saver/${successData.hash}/${originalData}`,
-        )
-      : successData.data.map(
-          (originalData) =>
-            `${(data.data as MangadexApi.AtHome.GetAtHomeServerChapterIdResponse).baseUrl}/data/${successData.hash}/${originalData}`,
-        )
-    : [];
+    async () => {
+      const { data: chapter, error } = await supabase
+        .from('chapters')
+        .select('images')
+        .eq('id', chapterId)
+        .single();
 
-  return { pages, isLoading, error };
+      if (error) throw error;
+      return chapter?.images || [];
+    }
+  );
+
+  return { pages: data || [], isLoading, error };
 }

@@ -52,12 +52,8 @@ export function useHomepageSeries({ limit = 28, page = 1 }: UseHomepageSeriesPro
             .order("updated_at", { ascending: false })
             .limit(3);
 
-          // Convert absolute path to relative path
-          const coverImage = manga.cover_image.replace(/^.*\/temp\//, '/temp/');
-
           return {
             ...manga,
-            cover_image: coverImage,
             chapters: chapters || [],
           };
         })

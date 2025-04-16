@@ -56,7 +56,7 @@ export default function ListChapter({
                       className="text-web-title transition visited:text-web-titleDisabled hover:text-web-titleLighter"
                       href={Constants.Routes.nettrom.chapter(chapter.id)}
                     >
-                      Chương {chapter.chapter_number} {chapter.title ? `- ${chapter.title}` : ""}
+                      Chương {chapter.chapter_number}
                     </Link>
                   </div>
                   <div className="no-wrap text-center text-muted-foreground">

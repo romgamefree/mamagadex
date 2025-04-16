@@ -1,46 +1,52 @@
 import { Metadata, ResolvingMetadata } from "next";
-import { MangadexApi } from "@/api";
-import { Utils } from "@/utils";
+import { createClient } from '@supabase/supabase-js';
 import { Constants } from "@/constants";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export async function generateMetadata(
   { params }: { params: { mangaId: string } },
   parent: ResolvingMetadata,
 ): Promise<Metadata> {
-  // read route params
   const id = params.mangaId;
 
   const previousImages = (await parent).openGraph?.images || [];
-  const mdImage = {
-    url: `https://og.mangadex.org/og-image/manga/${id}`,
-    width: 1200,
-    height: 630,
-  };
+
   try {
-    // fetch data
-    const {
-      data: { data: manga },
-    } = await MangadexApi.Manga.getMangaId(id);
+    const { data: manga, error } = await supabase
+      .from('mangas')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+
+    const image = {
+      url: manga.cover_url,
+      width: 1200,
+      height: 630,
+    };
+
     return {
-      title: `${Utils.Mangadex.getMangaTitle(manga)} - Đọc ngay tại ${Constants.APP_NAME}`,
-      description: Utils.Mangadex.transLocalizedStr(
-        manga.attributes.description,
-      ),
+      title: `${manga.title} - Đọc ngay tại ${Constants.APP_NAME}`,
+      description: manga.description,
       openGraph: {
-        images: [mdImage],
+        images: [image],
       },
       twitter: {
-        images: [mdImage],
+        images: [image],
       },
     };
   } catch {}
-  // optionally access and extend (rather than replace) parent metadata
 
   return {
     title: "Đọc ngay tại NetTrom",
     description: "NetTrom - Website Trộm Truyện Văn Minh",
     openGraph: {
-      images: [mdImage, ...previousImages],
+      images: [...previousImages],
     },
   };
 }

@@ -1,53 +1,42 @@
 import { Metadata, ResolvingMetadata } from "next";
 import { ChapterContextProvider } from "@/contexts/chapter";
-import { MangadexApi } from "@/api";
 import { Constants } from "@/constants";
-import { Utils } from "@/utils";
-import { ExtendChapter, ExtendManga } from "@/types/mangadex";
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+async function getChapterData(chapterId: string) {
+  const { data: chapter, error } = await supabase
+    .from('chapters')
+    .select('*, mangas(*)')
+    .eq('id', chapterId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching chapter:', error);
+    throw error;
+  }
+
+  return chapter;
+}
 
 export async function generateMetadata(
   { params }: { params: { chapterId: string } },
   parent: ResolvingMetadata,
 ): Promise<Metadata> {
-  // read route params
-  const id = params.chapterId;
-
-  const previousImages = (await parent).openGraph?.images || [];
-  const mdImage = {
-    url: `https://og.mangadex.org/og-image/chapter/${id}`,
-    width: 1200,
-    height: 630,
-  };
-  try {
-    const {
-      data: { data: chapter },
-    } = await MangadexApi.Chapter.getChapterId(id, { includes: ["manga"] });
-    const mangaTitle = Utils.Mangadex.getMangaTitle(
-      Utils.Mangadex.extractRelationship(
-        chapter.relationships,
-        "manga",
-      ) as unknown as ExtendManga,
-    );
-    return {
-      title: `Đọc chương ${Utils.Mangadex.getChapterTitle(chapter)} - ${mangaTitle} tại ${Constants.APP_NAME}`,
-      openGraph: {
-        images: [mdImage, ...previousImages],
-      },
-      twitter: {
-        images: [mdImage, ...previousImages],
-      },
-    };
-  } catch (error) {
-    console.error(error);
-  }
+  const chapter = await getChapterData(params.chapterId);
+  const manga = chapter.mangas;
 
   return {
-    title: `Đọc chương mới nhất tại ${Constants.APP_NAME}`,
+    title: `${manga.title} - Chương ${chapter.chapter_number} ${chapter.title ? `- ${chapter.title}` : ""}`,
+    description: manga.description,
     openGraph: {
-      images: [mdImage, ...previousImages],
-    },
-    twitter: {
-      images: [mdImage, ...previousImages],
+      title: `${manga.title} - Chương ${chapter.chapter_number} ${chapter.title ? `- ${chapter.title}` : ""}`,
+      description: manga.description,
+      images: [manga.cover_url],
     },
   };
 }
@@ -59,16 +48,10 @@ export default async function Layout({
   children: React.ReactNode;
   params: { chapterId: string };
 }) {
-  const {
-    data: { data: chapter },
-  } = await MangadexApi.Chapter.getChapterId(params.chapterId, {
-    includes: ["manga"],
-  });
-  const extenedChapter = Utils.Mangadex.extendRelationship(
-    chapter,
-  ) as ExtendChapter;
+  const chapter = await getChapterData(params.chapterId);
+
   return (
-    <ChapterContextProvider prefectchedChapter={extenedChapter}>
+    <ChapterContextProvider prefectchedChapter={chapter}>
       <div className="mx-[-12px]">
         <div className="w-full">{children}</div>
       </div>

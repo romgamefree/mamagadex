@@ -10,13 +10,14 @@ import { FaClock } from "react-icons/fa";
 import RandomAlert from "./random-alert";
 
 export default function ChapterControl() {
-  const { manga, chapter, others, group } = useChapterContext();
+  const { manga, chapter } = useChapterContext();
 
   const mangaTitle = useMemo(() => {
-    return Utils.Mangadex.getMangaTitle(manga);
+    return manga?.title || "";
   }, [manga]);
+
   const chapterTitle = useMemo(() => {
-    return Utils.Mangadex.getChapterTitle(chapter);
+    return `Chương ${chapter?.chapter_number} ${chapter?.title ? `- ${chapter.title}` : ""}`;
   }, [chapter]);
 
   return (
@@ -87,44 +88,17 @@ export default function ChapterControl() {
             <span className="">
               {chapter &&
                 format(
-                  new Date(chapter.attributes.publishAt),
+                  new Date(chapter.updated_at),
                   "HH:mm dd/MM/yyyy",
                 )}
             </span>
-            {group && (
-              <span className="text-muted-foreground">
-                {" "}
-                bởi{" "}
-                <Link href={Constants.Routes.nettrom.scanlationGroup(group.id)}>
-                  {group.attributes.name}
-                </Link>
-              </span>
-            )}
           </span>
         </p>
         <i></i>
       </div>
       <div className="reading-control">
-        {others.length > 0 && (
-          <div className="mrb5">
-            Chuyển sang đọc bản dịch nhóm khác
-            <div className="mrt10">
-              {others.map((other, idx) => (
-                <Link
-                  rel="nofollow"
-                  key={other}
-                  data-server={1}
-                  className="loadchapter btn btn-primary btn-success mrb5"
-                  href={Constants.Routes.nettrom.chapter(other)}
-                >
-                  Nhóm {idx}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
         <RandomAlert />
-        <ChapterControlBar></ChapterControlBar>
+        <ChapterControlBar />
         <div className="mb-4"></div>
       </div>
     </DataLoader>

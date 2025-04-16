@@ -1,42 +1,36 @@
-import { useChapterPages } from "@/hooks/mangadex";
-import LazyImages from "./lazy-images";
-import useWindowSize from "@/hooks/useWindowSize";
+"use client";
+
 import { useChapterContext } from "@/contexts/chapter";
 import { DataLoader } from "@/components/DataLoader";
-import { Button } from "../Button";
-import CommentSection from "../binh-luan/comment-section";
-import { Alert } from "../Alert";
-import ScanlationGroupInformation from "./scanlation-group-information";
+import { Button } from "@/components/nettrom/Button";
+import useWindowSize from "@/hooks/useWindowSize";
+import LazyImages from "@/components/nettrom/chuong/lazy-images";
+import CommentSection from "@/components/nettrom/binh-luan/comment-section";
+import { Alert } from "@/components/nettrom/Alert";
 import Link from "next/link";
 import Iconify from "@/components/iconify";
 
 export default function ChapterPages() {
   const { height } = useWindowSize();
-
-  const { chapterId, canNext, canPrev, next, prev, chapter, group } =
-    useChapterContext();
-
-  const { pages, isLoading } = useChapterPages(
-    chapter?.attributes.externalUrl ? null : chapterId,
-  );
+  const { chapter, next, prev, canNext, canPrev } = useChapterContext();
 
   return (
     <div>
-      {chapter?.attributes.externalUrl ? (
+      {chapter?.external_url ? (
         <div className="container flex justify-center">
-          <Link href={chapter.attributes.externalUrl} target="_blank">
+          <Link href={chapter.external_url} target="_blank">
             <Button icon={<Iconify icon="fa:external-link" />}>
-              Đọc tại trang chủ của {group?.attributes.name}
+              Đọc tại trang chủ
             </Button>
           </Link>
         </div>
       ) : (
         <DataLoader
-          isLoading={isLoading}
+          isLoading={!chapter}
           loadingText="Đang tải nội dung chương..."
         >
           <div className="reading-detail box_doc">
-            <LazyImages images={pages} threshold={(height || 1000) * 3} />
+            <LazyImages images={chapter?.images || []} threshold={(height || 1000) * 3} />
           </div>
         </DataLoader>
       )}
@@ -49,17 +43,12 @@ export default function ChapterPages() {
             Chương trước
           </Button>
         </div>
-        <DataLoader isLoading={!group} loadingText="Đang tải nhóm dịch...">
-          {group && (
-            <ScanlationGroupInformation group={group} canNext={canNext} />
-          )}
-        </DataLoader>
         <DataLoader isLoading={!chapter} loadingText="Đang tải bình luận...">
-          {chapterId &&
-            (!chapter || chapter.attributes.translatedLanguage === "vi") && (
-              <CommentSection type="chapter" typeId={chapterId} />
+          {chapter?.id &&
+            (!chapter || chapter.translated_language === "vi") && (
+              <CommentSection type="chapter" typeId={chapter.id} />
             )}
-          {chapter && chapter.attributes.translatedLanguage !== "vi" && (
+          {chapter && chapter.translated_language !== "vi" && (
             <Alert title="Chỉ hỗ trợ bình luận tại các chương tiếng Việt" />
           )}
         </DataLoader>

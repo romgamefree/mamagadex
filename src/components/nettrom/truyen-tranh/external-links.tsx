@@ -1,5 +1,3 @@
-import { MangadexApi } from "@/api";
-
 export default function ExternalLinks({
   links,
   mangaId,

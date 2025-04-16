@@ -1,25 +1,26 @@
-import { MangadexApi } from "@/api";
-import useSearchManga from "./useSearchManga";
+import { createClient } from '@supabase/supabase-js';
 import { useSettingsContext } from "@/contexts/settings";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function useFeaturedTitles() {
   const createdAtSince = new Date(Date.now() - 30 * 24 * 3600 * 1000);
-  const { filteredLanguages, filteredContent, originLanguages } =
-    useSettingsContext();
-  return useSearchManga({
-    includes: [
-      MangadexApi.Static.Includes.COVER_ART,
-      MangadexApi.Static.Includes.ARTIST,
-      MangadexApi.Static.Includes.AUTHOR,
-    ],
-    order: {
-      followedCount: MangadexApi.Static.Order.DESC,
-    },
-    contentRating: filteredContent as MangadexApi.Static.MangaContentRating[],
-    hasAvailableChapters: "true",
-    availableTranslatedLanguage: filteredLanguages,
-    originalLanguage: originLanguages,
-    createdAtSince: createdAtSince.toISOString().slice(0, -13) + "00:00:00",
-    limit: 12,
-  });
+  const { filteredLanguages, filteredContent, originLanguages } = useSettingsContext();
+
+  const fetchFeaturedTitles = async () => {
+    const { data, error } = await supabase
+      .from('mangas')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .gte('created_at', createdAtSince.toISOString())
+      .limit(12);
+
+    if (error) throw error;
+    return data;
+  };
+
+  return fetchFeaturedTitles();
 }

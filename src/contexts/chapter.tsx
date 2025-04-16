@@ -9,49 +9,59 @@ import React, {
   useCallback,
 } from "react";
 import { useParams } from "next/navigation";
-
-import {
-  useChapter,
-  useMangaAggregate,
-  useScanlationGroup,
-} from "@/hooks/mangadex";
-import {
-  ChapterItem,
-  ExtendChapter,
-  ExtendManga,
-  ScanlationGroup,
-} from "@/types/mangadex";
+import { createClient } from '@supabase/supabase-js';
 import useReadingHistory from "@/hooks/useReadingHistory";
-
-import { useMangadex } from "./mangadex";
-import { Utils } from "@/utils";
-import { Constants } from "@/constants";
 import { useSettingsContext } from "./settings";
 
-export const ChapterContext = createContext<{
-  chapterId: string | null;
-  chapter: ExtendChapter | null;
-  manga: ExtendManga | null;
-  chapters: ChapterItem[];
-  group: ScanlationGroup | null;
-  next: VoidFunction;
-  prev: VoidFunction;
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+interface Chapter {
+  id: string;
+  title: string;
+  chapter_number: string;
+  volume_number: string;
+  manga_id: string;
+  created_at: string;
+  updated_at: string;
+  mangas: Manga;
+  external_url?: string;
+  translated_language: string;
+  images: string[];
+}
+
+interface Manga {
+  id: string;
+  title: string;
+  description: string;
+  cover_url: string;
+  created_at: string;
+}
+
+interface ChapterContextType {
+  chapterId: string;
+  chapter: Chapter | null;
+  manga: Manga | null;
+  chapters: Chapter[];
+  next: () => void;
+  prev: () => void;
   goTo: (id: string) => void;
   canNext: boolean;
   canPrev: boolean;
-  others: string[];
-}>({
-  chapterId: null,
+}
+
+const ChapterContext = createContext<ChapterContextType>({
+  chapterId: "",
   chapter: null,
-  chapters: [],
   manga: null,
-  next: () => null,
-  prev: () => null,
-  goTo: () => null,
+  chapters: [],
+  next: () => {},
+  prev: () => {},
+  goTo: () => {},
   canNext: false,
   canPrev: false,
-  others: [],
-  group: null,
 });
 
 export const ChapterContextProvider = ({
@@ -59,132 +69,86 @@ export const ChapterContextProvider = ({
   prefectchedChapter,
 }: {
   children: React.ReactNode;
-  prefectchedChapter: ExtendChapter;
+  prefectchedChapter: Chapter;
 }) => {
-  const params = useParams<{ chapterId: string }>();
-  const [chapterId, setChapterId] = useState(params.chapterId);
-
-  const { chapter } = useChapter(chapterId, prefectchedChapter);
-  const { updateMangas, mangas } = useMangadex();
-
+  const params = useParams();
+  const chapterId = params?.id as string;
   const { addHistory } = useReadingHistory();
 
-  const { filteredLanguages } = useSettingsContext();
+  const [chapter, setChapter] = useState<Chapter | null>(prefectchedChapter);
+  const [manga, setManga] = useState<Manga | null>(prefectchedChapter.mangas);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(-1);
 
-  const mangaId = chapter?.manga?.id
-    ? chapter.manga.id
-    : prefectchedChapter.manga?.id || null;
-  const manga = mangaId ? mangas[mangaId] || prefectchedChapter.manga : null;
-  const groupId = chapter?.scanlation_group?.id
-    ? chapter.scanlation_group.id
-    : null;
+  useEffect(() => {
+    const fetchChapters = async () => {
+      const { data: chaptersData, error } = await supabase
+        .from('chapters')
+        .select('*')
+        .eq('manga_id', prefectchedChapter.manga_id)
+        .order('chapter_number', { ascending: false });
 
-  const { data: group } = useScanlationGroup(groupId);
+      if (error) {
+        console.error('Error fetching chapters:', error);
+        return;
+      }
 
-  const { chapterList: chapters } = useMangaAggregate(mangaId, {
-    translatedLanguage: chapter
-      ? [chapter.attributes.translatedLanguage]
-      : filteredLanguages,
-    groups: groupId ? [groupId] : undefined,
-  });
+      setChapters(chaptersData);
+      const index = chaptersData.findIndex((c: Chapter) => c.id === chapterId);
+      setCurrentIndex(index);
+    };
 
-  const currentChapterIndex = useMemo(
-    () => chapters.findIndex((c) => c.id === chapterId),
-    [chapters, chapterId],
-  );
-  const canPrev = currentChapterIndex > 0;
-  const canNext =
-    currentChapterIndex >= 0 && currentChapterIndex < chapters.length - 1;
+    fetchChapters();
+  }, [chapterId, prefectchedChapter.manga_id]);
 
-  const others =
-    (currentChapterIndex >= 0 && chapters[currentChapterIndex]?.others) || [];
-
-  const prev = useCallback(() => {
-    if (canPrev) {
-      setChapterId(chapters[currentChapterIndex - 1].id);
-    }
-  }, [currentChapterIndex, chapters, setChapterId, canPrev]);
+  const canNext = useMemo(() => currentIndex > 0, [currentIndex]);
+  const canPrev = useMemo(() => currentIndex < chapters.length - 1, [currentIndex, chapters.length]);
 
   const next = useCallback(() => {
-    if (canNext) {
-      setChapterId(chapters[currentChapterIndex + 1].id);
-    }
-  }, [currentChapterIndex, chapters, setChapterId, canNext]);
+    if (!canNext) return;
+    const nextChapter = chapters[currentIndex - 1];
+    goTo(nextChapter.id);
+  }, [canNext, chapters, currentIndex]);
 
-  const goTo = useCallback(
-    (desId: string) => {
-      setChapterId(desId);
-    },
-    [setChapterId],
-  );
+  const prev = useCallback(() => {
+    if (!canPrev) return;
+    const prevChapter = chapters[currentIndex + 1];
+    goTo(prevChapter.id);
+  }, [canPrev, chapters, currentIndex]);
 
-  useEffect(() => {
-    if (mangaId) {
-      updateMangas({ ids: [mangaId] });
-    }
-  }, [mangaId]);
+  const goTo = useCallback((id: string) => {
+    if (!id) return;
+    window.location.href = `/nettrom/chuong/${id}`;
+  }, []);
 
   useEffect(() => {
-    if (!chapter) return;
-    const newPath = Constants.Routes.nettrom.chapter(chapter.id);
-    document.title = `Đọc ${Utils.Mangadex.getChapterTitle(chapter)} - ${Utils.Mangadex.getMangaTitle(manga)}`;
-    window.history.pushState(
-      { ...window.history.state, as: newPath, url: newPath },
-      "",
-      newPath,
-    );
-  }, [chapter?.id]);
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [chapterId]);
-
-  useEffect(() => {
-    if (manga?.cover_art && chapter) {
+    if (manga && chapter) {
       addHistory(manga.id, {
-        mangaTitle: Utils.Mangadex.getMangaTitle(manga),
-        cover: Utils.Mangadex.getCoverArt(manga),
-        chapterTitle: Utils.Mangadex.getChapterTitle(chapter),
+        mangaTitle: manga.title,
+        cover: manga.cover_url,
+        chapterTitle: chapter.title,
         chapterId: chapter.id,
       });
     }
   }, [manga, chapter, addHistory]);
 
-  // user keyboard
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!event.target || (event.target as HTMLElement).tagName !== "BODY")
-        return;
-      if (event.key === "ArrowRight") {
-        next();
-      } else if (event.key === "ArrowLeft") {
-        prev();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [next, prev]);
+  const value = useMemo(
+    () => ({
+      chapterId,
+      chapter,
+      manga,
+      chapters,
+      next,
+      prev,
+      goTo,
+      canNext,
+      canPrev,
+    }),
+    [chapterId, chapter, manga, chapters, next, prev, goTo, canNext, canPrev]
+  );
 
   return (
-    <ChapterContext.Provider
-      value={{
-        chapterId,
-        chapter,
-        manga,
-        chapters,
-        next,
-        prev,
-        goTo,
-        canNext,
-        canPrev,
-        others,
-        group,
-      }}
-    >
+    <ChapterContext.Provider value={value}>
       {children}
     </ChapterContext.Provider>
   );

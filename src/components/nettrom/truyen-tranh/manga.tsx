@@ -270,6 +270,10 @@ export default function Manga({
                     className="h-full w-full object-cover"
                     src={manga.cover_image}
                     alt={title}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "/images/default-cover.jpg";
+                    }}
                   />
                 </AspectRatio>
               </div>
