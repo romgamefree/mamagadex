@@ -7,19 +7,19 @@ import { useEffect, useMemo } from "react";
 import { twMerge } from "tailwind-merge";
 import { FaArrowDown, FaArrowUp, FaRedo, FaSearch } from "react-icons/fa";
 
-import { MangadexApi } from "@/api";
 import { Utils } from "@/utils";
 import { useToggle } from "@/hooks/useToggle";
 import { Constants } from "@/constants";
+import { SupabaseStatic } from "@/types/supabase/static";
+import { SearchOptions } from "@/types/search";
 
 import MultiSelectDropdown from "../multiselect-dropdown";
 import { Button } from "../Button";
-
 import FilterTag from "./filter-tag";
 import Input from "../input";
 import AuthorSearchInput from "./author-search-input";
 
-type Inputs = MangadexApi.Manga.GetSearchMangaRequestOptions & {
+type Inputs = SearchOptions & {
   orderType?: string;
 };
 
@@ -33,9 +33,7 @@ export default function SearchMangaForm() {
   const params = useSearchParams();
   const [showFilter, toggle] = useToggle(false);
 
-  const { register, handleSubmit, watch, reset, setValue } = useForm<Inputs>(
-    {},
-  );
+  const { register, handleSubmit, watch, reset, setValue } = useForm<Inputs>({});
   const onSubmit: SubmitHandler<Inputs> = (data) => {
     router.push(Utils.Url.getSearchNetTromUrl(data));
   };
@@ -45,50 +43,30 @@ export default function SearchMangaForm() {
     const result = [];
     if (values.artists && values.artists.length) result.push("artists");
     if (values.authors && values.authors.length) result.push("authors");
-    if (
-      values.availableTranslatedLanguage &&
-      values.availableTranslatedLanguage.length
-    )
+    if (values.availableTranslatedLanguage && values.availableTranslatedLanguage.length)
       result.push("availableTranslatedLanguage");
-    if (values.contentRating && values.contentRating.length)
-      result.push("contentRating");
-    if (values.originalLanguage && values.originalLanguage.length)
-      result.push("originalLanguage");
-    if (values.publicationDemographic && values.publicationDemographic.length)
-      result.push("publicationDemographic");
+    if (values.content && values.content.length) result.push("content");
+    if (values.origin && values.origin.length) result.push("origin");
     if (values.status && values.status.length) result.push("status");
     if (values.year) result.push("year");
-    if (
-      (values.includedTags && values.includedTags.length) ||
-      (values.excludedTags && values.excludedTags.length)
-    )
-      result.push("tag");
+    if (values.genres && values.genres.length) result.push("genres");
     return result;
   }, [values]);
 
   useEffect(() => {
     const normalizedParams: Inputs = Utils.Mangadex.normalizeParams(params);
-    if (!params.get("orderType") && normalizedParams.order) {
-      if (
-        normalizedParams.order.latestUploadedChapter ===
-        MangadexApi.Static.Order.DESC
-      )
+    if (!params.get("orderType") && normalizedParams.orderBy) {
+      if (normalizedParams.orderBy === SupabaseStatic.OrderOptions.LATEST_UPLOADED_CHAPTER && normalizedParams.orderDirection === SupabaseStatic.Order.DESC)
         normalizedParams.orderType = "0";
-      else if (
-        normalizedParams.order.createdAt === MangadexApi.Static.Order.DESC
-      )
+      else if (normalizedParams.orderBy === SupabaseStatic.OrderOptions.CREATED_AT && normalizedParams.orderDirection === SupabaseStatic.Order.DESC)
         normalizedParams.orderType = "1";
-      else if (
-        normalizedParams.order.followedCount === MangadexApi.Static.Order.DESC
-      )
+      else if (normalizedParams.orderBy === SupabaseStatic.OrderOptions.FOLLOWED_COUNT && normalizedParams.orderDirection === SupabaseStatic.Order.DESC)
         normalizedParams.orderType = "2";
-      else if (normalizedParams.order.title === MangadexApi.Static.Order.ASC)
+      else if (normalizedParams.orderBy === SupabaseStatic.OrderOptions.TITLE && normalizedParams.orderDirection === SupabaseStatic.Order.ASC)
         normalizedParams.orderType = "3";
-      else if (
-        normalizedParams.order.relevance === MangadexApi.Static.Order.DESC
-      )
+      else if (normalizedParams.orderBy === SupabaseStatic.OrderOptions.RELEVANCE && normalizedParams.orderDirection === SupabaseStatic.Order.DESC)
         normalizedParams.orderType = "4";
-      else if (normalizedParams.order.rating === MangadexApi.Static.Order.DESC)
+      else if (normalizedParams.orderBy === SupabaseStatic.OrderOptions.RATING && normalizedParams.orderDirection === SupabaseStatic.Order.DESC)
         normalizedParams.orderType = "5";
     }
     reset({ ...normalizedParams });
@@ -98,24 +76,28 @@ export default function SearchMangaForm() {
     const orderType = values.orderType;
     switch (orderType) {
       case "0":
-        setValue("order", {
-          latestUploadedChapter: MangadexApi.Static.Order.DESC,
-        });
+        setValue("orderBy", SupabaseStatic.OrderOptions.LATEST_UPLOADED_CHAPTER);
+        setValue("orderDirection", SupabaseStatic.Order.DESC);
         break;
       case "1":
-        setValue("order", { createdAt: MangadexApi.Static.Order.DESC });
+        setValue("orderBy", SupabaseStatic.OrderOptions.CREATED_AT);
+        setValue("orderDirection", SupabaseStatic.Order.DESC);
         break;
       case "2":
-        setValue("order", { followedCount: MangadexApi.Static.Order.DESC });
+        setValue("orderBy", SupabaseStatic.OrderOptions.FOLLOWED_COUNT);
+        setValue("orderDirection", SupabaseStatic.Order.DESC);
         break;
       case "3":
-        setValue("order", { title: MangadexApi.Static.Order.ASC });
+        setValue("orderBy", SupabaseStatic.OrderOptions.TITLE);
+        setValue("orderDirection", SupabaseStatic.Order.ASC);
         break;
       case "4":
-        setValue("order", { relevance: MangadexApi.Static.Order.DESC });
+        setValue("orderBy", SupabaseStatic.OrderOptions.RELEVANCE);
+        setValue("orderDirection", SupabaseStatic.Order.DESC);
         break;
       case "5":
-        setValue("order", { rating: MangadexApi.Static.Order.DESC });
+        setValue("orderBy", SupabaseStatic.OrderOptions.RATING);
+        setValue("orderDirection", SupabaseStatic.Order.DESC);
         break;
       default:
         break;
@@ -162,47 +144,32 @@ export default function SearchMangaForm() {
             <div>
               <label>Nội dung</label>
               <MultiSelectDropdown
-                options={Object.values(
-                  MangadexApi.Static.MangaContentRating,
-                ).map((v) =>
+                options={Object.values(SupabaseStatic.Content).map((v) =>
                   optionlize(v, Utils.Mangadex.translateContentRating),
                 )}
-                selectedValues={values.contentRating || []}
+                selectedValues={values.content || []}
                 onChange={(newValue) => {
-                  setValue(
-                    "contentRating",
-                    newValue as MangadexApi.Static.MangaContentRating[],
-                  );
+                  setValue("content", newValue as SupabaseStatic.Content[]);
                 }}
               />
             </div>
             <div>
               <label>Đối tượng</label>
               <MultiSelectDropdown
-                options={Object.values(
-                  MangadexApi.Static.MangaPublicationDemographic,
-                ).map((v) => optionlize(v))}
-                selectedValues={values.publicationDemographic || []}
+                options={Object.values(SupabaseStatic.Age).map((v) => optionlize(v))}
+                selectedValues={values.age || []}
                 onChange={(newValue) => {
-                  setValue(
-                    "publicationDemographic",
-                    newValue as MangadexApi.Static.MangaPublicationDemographic[],
-                  );
+                  setValue("age", newValue as SupabaseStatic.Age[]);
                 }}
               />
             </div>
             <div>
               <label>Tình trạng</label>
               <MultiSelectDropdown
-                options={Object.values(
-                  MangadexApi.Static.MangaPublicationStatus,
-                ).map((v) => optionlize(v, Utils.Mangadex.translateStatus))}
+                options={Object.values(SupabaseStatic.Status).map((v) => optionlize(v, Utils.Mangadex.translateStatus))}
                 selectedValues={values.status || []}
                 onChange={(newValue) => {
-                  setValue(
-                    "status",
-                    newValue as MangadexApi.Static.MangaPublicationStatus[],
-                  );
+                  setValue("status", newValue as SupabaseStatic.Status[]);
                 }}
               />
             </div>
@@ -236,9 +203,9 @@ export default function SearchMangaForm() {
                   value: v.code,
                   label: v.name,
                 }))}
-                selectedValues={values.originalLanguage || []}
+                selectedValues={values.origin || []}
                 onChange={(newValue) => {
-                  setValue("originalLanguage", newValue);
+                  setValue("origin", newValue as SupabaseStatic.Origin[]);
                 }}
                 language
                 anyLabel="Tất cả quốc gia"
@@ -272,7 +239,7 @@ export default function SearchMangaForm() {
                   className="form-control block w-full appearance-none items-center justify-between rounded-lg border-2 border-neutral-300 bg-neutral-50 p-4 pr-10 capitalize leading-[21px] text-neutral-900 focus:border-purple-500 focus:ring-purple-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white dark:focus:border-purple-500 dark:focus:ring-purple-500"
                   {...register("orderType")}
                 >
-                  {Object.entries(ORDER_TYPE).map(([key, value]) => (
+                  {Object.entries(SupabaseStatic.OrderType).map(([key, value]) => (
                     <option className="capitalize" key={key} value={key}>
                       {value}
                     </option>
@@ -302,8 +269,8 @@ export default function SearchMangaForm() {
           {!showFilter && dirtyValues.length > 0 && (
             <div className="mb-2">
               Bạn đang lọc theo{" "}
-              {dirtyValues.map((f) => TRANSLATED_FIELD[f] || f).join(", ")} và
-              sắp xếp theo thứ tự {ORDER_TYPE[values.orderType || "0"]}.
+              {dirtyValues.map((f) => SupabaseStatic.TranslatedField[f as keyof typeof SupabaseStatic.TranslatedField] || f).join(", ")} và
+              sắp xếp theo thứ tự {SupabaseStatic.OrderType[values.orderType as keyof typeof SupabaseStatic.OrderType || "0"]}.
             </div>
           )}
           <div className="flex gap-2 md:justify-end">
@@ -326,24 +293,3 @@ export default function SearchMangaForm() {
     </>
   );
 }
-
-const TRANSLATED_FIELD: Record<string, string> = {
-  artists: "hoạ sĩ",
-  authors: "tác giả",
-  availableTranslatedLanguage: "ngôn ngữ bản dịch",
-  contentRating: "nội dung",
-  originalLanguage: "quốc gia",
-  publicationDemographic: "đối tượng",
-  status: "tình trạng",
-  year: "năm phát hành",
-  tag: "tag",
-};
-
-const ORDER_TYPE: Record<string, string> = {
-  "0": "mới cập nhật",
-  "1": "truyện mới",
-  "2": "theo dõi nhiều nhất",
-  "3": "bảng chữ cái",
-  "4": "liên quan nhất",
-  "5": "đánh giá cao nhất",
-};

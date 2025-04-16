@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS public.mangas (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     alt_titles TEXT[],
+    source_url TEXT UNIQUE NOT NULL,
     original_language TEXT,
     external_links TEXT[]
 );
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS public.chapters (
     title TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    source_url TEXT UNIQUE NOT NULL,
     images TEXT[],
     UNIQUE(manga_id, chapter_number)
 );
