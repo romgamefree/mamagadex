@@ -352,10 +352,10 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
-"@next/env@14.2.27":
-  version "14.2.27"
-  resolved "https://registry.npmjs.org/@next/env/-/env-14.2.27.tgz"
-  integrity sha512-VLGHu7aBMK0rmSEPjx6qb4njGYfEfN5HpeYV32II1dNZZvPxqa+RfWVgPf4q6hmicavceAGeQneTxofx7Zm/yw==
+"@next/env@14.2.28":
+  version "14.2.28"
+  resolved "https://registry.npmjs.org/@next/env/-/env-14.2.28.tgz"
+  integrity sha512-PAmWhJfJQlP+kxZwCjrVd9QnR5x0R3u0mTXTiZDgSd4h5LdXmjxCCWbN9kq6hkZBOax8Rm3xDW5HagWyJuT37g==
 
 "@next/eslint-plugin-next@15.2.4":
   version "15.2.4"
@@ -364,10 +364,10 @@
   dependencies:
     fast-glob "3.3.1"
 
-"@next/swc-darwin-arm64@14.2.27":
-  version "14.2.27"
-  resolved "https://registry.npmjs.org/@next/swc-darwin-arm64/-/swc-darwin-arm64-14.2.27.tgz"
-  integrity sha512-WKJsKqY1f8NkwcfVbUtoTjJ5e8Q2kEFhjM7tVFA3jqesetBR2EegUTed1Ov7lZebQ7XRrphAg665egiCLc9+Iw==
+"@next/swc-darwin-arm64@14.2.28":
+  version "14.2.28"
+  resolved "https://registry.npmjs.org/@next/swc-darwin-arm64/-/swc-darwin-arm64-14.2.28.tgz"
+  integrity sha512-kzGChl9setxYWpk3H6fTZXXPFFjg7urptLq5o5ZgYezCrqlemKttwMT5iFyx/p1e/JeglTwDFRtb923gTJ3R1w==
 
 "@next/third-parties@^15.1.4":
   version "15.2.4"
@@ -4156,12 +4156,12 @@ natural-compare@^1.4.0:
   resolved "https://registry.npmjs.org/natural-compare/-/natural-compare-1.4.0.tgz"
   integrity sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==
 
-"next@^13.0.0 || ^14.0.0 || ^15.0.0", next@^14.2.16, "next@>= 6.0.0", next@>=14.0.0:
-  version "14.2.27"
-  resolved "https://registry.npmjs.org/next/-/next-14.2.27.tgz"
-  integrity sha512-xmTsnu6rbXVaupRmU2k3BHVpQp7kK+/Ge9XYZlwXQNS2IPP/U9ToDoO6tTSzZIV36fmDBnwKqBUd7KuFXTi0Mw==
+"next@^13.0.0 || ^14.0.0 || ^15.0.0", next@^14.2.28, "next@>= 6.0.0", next@>=14.0.0:
+  version "14.2.28"
+  resolved "https://registry.npmjs.org/next/-/next-14.2.28.tgz"
+  integrity sha512-QLEIP/kYXynIxtcKB6vNjtWLVs3Y4Sb+EClTC/CSVzdLD1gIuItccpu/n1lhmduffI32iPGEK2cLLxxt28qgYA==
   dependencies:
-    "@next/env" "14.2.27"
+    "@next/env" "14.2.28"
     "@swc/helpers" "0.5.5"
     busboy "1.6.0"
     caniuse-lite "^1.0.30001579"
@@ -4169,17 +4169,17 @@ natural-compare@^1.4.0:
     postcss "8.4.31"
     styled-jsx "5.1.1"
   optionalDependencies:
-    "@next/swc-darwin-arm64" "14.2.27"
-    "@next/swc-darwin-x64" "14.2.27"
-    "@next/swc-linux-arm64-gnu" "14.2.27"
-    "@next/swc-linux-arm64-musl" "14.2.27"
-    "@next/swc-linux-x64-gnu" "14.2.27"
-    "@next/swc-linux-x64-musl" "14.2.27"
-    "@next/swc-win32-arm64-msvc" "14.2.27"
-    "@next/swc-win32-ia32-msvc" "14.2.27"
-    "@next/swc-win32-x64-msvc" "14.2.27"
+    "@next/swc-darwin-arm64" "14.2.28"
+    "@next/swc-darwin-x64" "14.2.28"
+    "@next/swc-linux-arm64-gnu" "14.2.28"
+    "@next/swc-linux-arm64-musl" "14.2.28"
+    "@next/swc-linux-x64-gnu" "14.2.28"
+    "@next/swc-linux-x64-musl" "14.2.28"
+    "@next/swc-win32-arm64-msvc" "14.2.28"
+    "@next/swc-win32-ia32-msvc" "14.2.28"
+    "@next/swc-win32-x64-msvc" "14.2.28"
 
-nextjs-toploader@^3.7.15:
+nextjs-toploader@^3.8.16:
   version "3.8.16"
   resolved "https://registry.npmjs.org/nextjs-toploader/-/nextjs-toploader-3.8.16.tgz"
   integrity sha512-xiejFF9OQD8ovvHfrFhnEmRytvZtwIOY/mMtI9punOAACXpYpgC0y1afJ4DSIEmUi4Syy9A5BsFpUORTJ9z8Ng==
@@ -4769,7 +4769,7 @@ react-hook-form@^7.0.0, react-hook-form@^7.42.1:
   resolved "https://registry.npmjs.org/react-hook-form/-/react-hook-form-7.55.0.tgz"
   integrity sha512-XRnjsH3GVMQz1moZTW53MxfoWN7aDpUg/GpVNc4A3eXRVNdGXfbzJ4vM4aLQ8g6XCUh1nIbx70aaNCl7kxnjog==
 
-react-icons@^5.3.0:
+react-icons@^5.5.0:
   version "5.5.0"
   resolved "https://registry.npmjs.org/react-icons/-/react-icons-5.5.0.tgz"
   integrity sha512-MEFcXdkP3dLo8uumGI5xN3lDFNsRtrjbOEKDLD7yv76v4wpnEq2Lt2qeHaQOr34I/wPN3s3+N08WkQ+CW37Xiw==
@@ -5466,7 +5466,7 @@ supports-preserve-symlinks-flag@^1.0.0:
   resolved "https://registry.npmjs.org/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz"
   integrity sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==
 
-swiper@^11.1.14:
+swiper@^11.2.6:
   version "11.2.6"
   resolved "https://registry.npmjs.org/swiper/-/swiper-11.2.6.tgz"
   integrity sha512-8aXpYKtjy3DjcbzZfz+/OX/GhcU5h+looA6PbAzHMZT6ESSycSp9nAjPCenczgJyslV+rUGse64LMGpWE3PX9Q==
@@ -5492,7 +5492,7 @@ tabbable@^6.0.0:
   resolved "https://registry.npmjs.org/tabbable/-/tabbable-6.2.0.tgz"
   integrity sha512-Cat63mxsVJlzYvN51JmVXIgNoUokrIaT2zLclCXjRd8boZ0004U4KCs/sToJ75C6sdlByWxpYnb5Boif1VSFew==
 
-tailwind-merge@^2.5.4:
+tailwind-merge@^2.6.0:
   version "2.6.0"
   resolved "https://registry.npmjs.org/tailwind-merge/-/tailwind-merge-2.6.0.tgz"
   integrity sha512-P+Vu1qXfzediirmHOC3xKGAYeZtPcV9g76X+xg2FD4tYgR71ewMA35Y3sCz3zhiN/dwefRpJX0yBcgwi1fXNQA==

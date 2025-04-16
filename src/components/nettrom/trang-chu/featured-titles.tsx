@@ -8,12 +8,12 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { FaClock, FaFire } from "react-icons/fa";
 import { Navigation, Pagination, Autoplay } from "swiper/modules";
 
-import { useFeaturedTitles } from "@/hooks/mangadex";
-import { useMangadex } from "@/contexts/mangadex";
+import { useFeaturedTitles } from "@/hooks/supabase/use-featured-titles";
 import { AspectRatio } from "@/components/shadcn/aspect-ratio";
 import { Constants } from "@/constants";
 import { Utils } from "@/utils";
 import { ErrorDisplay } from "../error-display";
+import { MangaDetail } from "@/types/supabase";
 
 export default function FeaturedTitles() {
   const {
@@ -22,11 +22,6 @@ export default function FeaturedTitles() {
     error,
     mutate,
   } = useFeaturedTitles();
-  const { addMangas } = useMangadex();
-
-  useEffect(() => {
-    if (featuredTitles.length > 0) addMangas(featuredTitles);
-  }, [featuredTitles, addMangas]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -92,8 +87,8 @@ export default function FeaturedTitles() {
             spaceBetween={20}
             loop
           >
-            {featuredTitles.map((manga) => {
-              const title = Utils.Mangadex.getMangaTitle(manga);
+            {featuredTitles.map((manga: MangaDetail) => {
+              const title = manga.title;
               return (
                 <SwiperSlide key={manga.id}>
                   <div key={manga.id} className={`item bg-black bg-cover`}>
@@ -109,7 +104,7 @@ export default function FeaturedTitles() {
                         <div className="relative h-full w-full">
                           <div className="absolute bottom-0 left-0 z-[1] h-2/5 w-full bg-gradient-to-t from-neutral-900 from-[10%] to-transparent transition-all duration-500 group-hover:h-3/5"></div>
                           <img
-                            src={Utils.Mangadex.getCoverArt(manga)}
+                            src={manga.cover_image}
                             alt={title}
                             className="h-full w-full object-cover transition duration-500 group-hover:scale-[102%]"
                           />
@@ -123,13 +118,13 @@ export default function FeaturedTitles() {
                           href={Constants.Routes.nettrom.manga(manga.id)}
                           className="text-web-title transition hover:text-web-titleLighter"
                         >
-                          {manga.author?.attributes?.name || ""}
+                          {manga.author || ""}
                         </Link>
                         <p className="time mb-0 mt-1 flex h-0 items-center gap-2 overflow-hidden text-[12px] text-muted-foreground group-hover:h-auto">
                           <FaClock />{" "}
                           <span>
                             {Utils.Date.formatNowDistance(
-                              new Date(manga.attributes.updatedAt),
+                              new Date(manga.updated_at),
                             )}{" "}
                             trước
                           </span>

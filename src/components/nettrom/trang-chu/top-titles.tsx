@@ -1,15 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import Skeleton from "react-loading-skeleton";
+import { createClient } from '@supabase/supabase-js';
+import { MangaDetail } from '@/types/supabase';
 
-import { MangadexApi } from "@/api";
 import { useMangadex } from "@/contexts/mangadex";
-import { useSearchManga } from "@/hooks/mangadex";
 import { FaClock, FaHeart, FaStar, FaTrophy } from "react-icons/fa";
-import { ExtendManga } from "@/types/mangadex";
 import { AspectRatio } from "@/components/shadcn/aspect-ratio";
 import {
   Tabs,
@@ -21,8 +20,18 @@ import { Utils } from "@/utils";
 import { Constants } from "@/constants";
 import { ErrorDisplay } from "../error-display";
 
+// Initialize Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Missing Supabase environment variables');
+}
+
+const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
+
 const MangaTile = (props: {
-  manga: ExtendManga;
+  manga: MangaDetail;
   title: string;
   order: number;
   hideCounter?: boolean;
@@ -53,7 +62,7 @@ const MangaTile = (props: {
           <AspectRatio ratio={1} className="overflow-hidden rounded">
             <img
               className="lazy h-full w-full object-cover"
-              src={Utils.Mangadex.getCoverArt(props.manga)}
+              src={props.manga.cover_image}
               alt={props.title}
             />
           </AspectRatio>
@@ -133,76 +142,103 @@ const MangaTileSkeleton = (props: {
 };
 
 export default function TopTitles({ groupId }: { groupId?: string }) {
-  const {
-    mangaList: topMangaList,
-    isLoading: topMangaListLoading,
-    error: topMangaListError,
-  } = useSearchManga({
-    limit: 7,
-    includes: [MangadexApi.Static.Includes.COVER_ART],
-    order: {
-      followedCount: MangadexApi.Static.Order.DESC,
-    },
-    contentRating: [
-      MangadexApi.Static.MangaContentRating.SAFE,
-      MangadexApi.Static.MangaContentRating.SUGGESTIVE,
-    ],
-    hasAvailableChapters: "true",
-    availableTranslatedLanguage: ["vi"],
-    group: groupId ? groupId : undefined,
-  });
-  const {
-    mangaList: newMangaList,
-    isLoading: newMangaListLoading,
-    error: newMangaListError,
-  } = useSearchManga({
-    limit: 7,
-    includes: [MangadexApi.Static.Includes.COVER_ART],
-    order: {
-      createdAt: MangadexApi.Static.Order.DESC,
-    },
-    contentRating: [
-      MangadexApi.Static.MangaContentRating.SAFE,
-      MangadexApi.Static.MangaContentRating.SUGGESTIVE,
-    ],
-    hasAvailableChapters: "true",
-    availableTranslatedLanguage: ["vi"],
-    group: groupId ? groupId : undefined,
-  });
-  const {
-    mangaList: favoriteMangaList,
-    isLoading: favoriteMangaListLoading,
-    error: favoriteMangaListError,
-  } = useSearchManga({
-    limit: 7,
-    includes: [MangadexApi.Static.Includes.COVER_ART],
-    order: {
-      rating: MangadexApi.Static.Order.DESC,
-    },
-    contentRating: [
-      MangadexApi.Static.MangaContentRating.SAFE,
-      MangadexApi.Static.MangaContentRating.SUGGESTIVE,
-    ],
-    hasAvailableChapters: "true",
-    availableTranslatedLanguage: ["vi"],
-    group: groupId ? groupId : undefined,
-  });
+  const [topMangaList, setTopMangaList] = useState<MangaDetail[]>([]);
+  const [newMangaList, setNewMangaList] = useState<MangaDetail[]>([]);
+  const [favoriteMangaList, setFavoriteMangaList] = useState<MangaDetail[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  const { addMangas, updateMangaStatistics, mangaStatistics } = useMangadex();
+  const { addMangas, updateMangaStatistics } = useMangadex();
+
+  useEffect(() => {
+    const fetchMangas = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Fetch top mangas by created_at
+        const { data: topData, error: topError } = await supabase
+          .from('mangas')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(7);
+
+        if (topError) {
+          console.error('Error fetching top mangas:', topError);
+          throw new Error(`Failed to fetch top mangas: ${topError.message}`);
+        }
+
+        if (!topData) {
+          throw new Error('No data returned for top mangas');
+        }
+
+        setTopMangaList(topData);
+
+        // Fetch new mangas
+        const { data: newData, error: newError } = await supabase
+          .from('mangas')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(7);
+
+        if (newError) {
+          console.error('Error fetching new mangas:', newError);
+          throw new Error(`Failed to fetch new mangas: ${newError.message}`);
+        }
+
+        if (!newData) {
+          throw new Error('No data returned for new mangas');
+        }
+
+        setNewMangaList(newData);
+
+        // Fetch favorite mangas by created_at
+        const { data: favoriteData, error: favoriteError } = await supabase
+          .from('mangas')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(7);
+
+        if (favoriteError) {
+          console.error('Error fetching favorite mangas:', favoriteError);
+          throw new Error(`Failed to fetch favorite mangas: ${favoriteError.message}`);
+        }
+
+        if (!favoriteData) {
+          throw new Error('No data returned for favorite mangas');
+        }
+
+        setFavoriteMangaList(favoriteData);
+
+      } catch (err) {
+        console.error('Error in fetchMangas:', err);
+        setError(err instanceof Error ? err : new Error('Failed to fetch manga data'));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMangas();
+  }, []);
 
   useEffect(() => {
     if (topMangaList.length > 0) {
       addMangas(topMangaList);
-      updateMangaStatistics({ manga: topMangaList.map((m) => m.id) });
+      updateMangaStatistics(topMangaList.map((m) => m.id));
     }
-  }, [topMangaList]);
+  }, [topMangaList, addMangas, updateMangaStatistics]);
 
   useEffect(() => {
     if (favoriteMangaList.length > 0) {
       addMangas(favoriteMangaList);
-      updateMangaStatistics({ manga: favoriteMangaList.map((m) => m.id) });
+      updateMangaStatistics(favoriteMangaList.map((m) => m.id));
     }
-  }, [favoriteMangaList]);
+  }, [favoriteMangaList, addMangas, updateMangaStatistics]);
+
+  if (error) {
+    console.error('TopTitles error:', error);
+    return <ErrorDisplay error={error} />;
+  }
 
   return (
     <div className="">
@@ -240,7 +276,7 @@ export default function TopTitles({ groupId }: { groupId?: string }) {
             </TabsList>
             <TabsContent value="top">
               <ul className="flex flex-col gap-4">
-                {topMangaListLoading
+                {isLoading
                   ? [...Array(7)].map((_, index) => (
                       <MangaTileSkeleton
                         order={index}
@@ -248,27 +284,21 @@ export default function TopTitles({ groupId }: { groupId?: string }) {
                         icon={<FaStar />}
                       />
                     ))
-                  : topMangaList.map((manga, index) => {
-                      const title = Utils.Mangadex.getMangaTitle(manga);
-                      return (
-                        <MangaTile
-                          order={index}
-                          key={manga.id}
-                          title={title}
-                          manga={manga}
-                          icon={<FaStar />}
-                          counter={mangaStatistics[manga.id]?.follows || 0}
-                        ></MangaTile>
-                      );
-                    })}
-                {topMangaListError && (
-                  <ErrorDisplay error={topMangaListError} />
-                )}
+                  : topMangaList.map((manga, index) => (
+                      <MangaTile
+                        key={manga.id}
+                        manga={manga}
+                        title={manga.title}
+                        order={index}
+                        icon={<FaStar />}
+                        counter={manga.follows}
+                      />
+                    ))}
               </ul>
             </TabsContent>
             <TabsContent value="favorite">
               <ul className="flex flex-col gap-4">
-                {favoriteMangaListLoading
+                {isLoading
                   ? [...Array(7)].map((_, index) => (
                       <MangaTileSkeleton
                         order={index}
@@ -276,54 +306,37 @@ export default function TopTitles({ groupId }: { groupId?: string }) {
                         icon={<FaHeart />}
                       />
                     ))
-                  : favoriteMangaList.map((manga, index) => {
-                      const title = Utils.Mangadex.getMangaTitle(manga);
-                      return (
-                        <MangaTile
-                          order={index}
-                          key={manga.id}
-                          title={title}
-                          manga={manga}
-                          icon={<FaHeart />}
-                          counter={
-                            Math.round(
-                              (mangaStatistics[manga.id]?.rating?.bayesian ||
-                                0) * 10,
-                            ) / 10
-                          }
-                        ></MangaTile>
-                      );
-                    })}
-                {favoriteMangaListError && (
-                  <ErrorDisplay error={favoriteMangaListError} />
-                )}
+                  : favoriteMangaList.map((manga, index) => (
+                      <MangaTile
+                        key={manga.id}
+                        manga={manga}
+                        title={manga.title}
+                        order={index}
+                        icon={<FaHeart />}
+                        counter={manga.rating}
+                      />
+                    ))}
               </ul>
             </TabsContent>
             <TabsContent value="new">
               <ul className="flex flex-col gap-4">
-                {newMangaListLoading
+                {isLoading
                   ? [...Array(7)].map((_, index) => (
                       <MangaTileSkeleton
                         order={index}
                         key={index}
-                        icon={<FaHeart />}
+                        icon={<FaClock />}
                       />
                     ))
-                  : newMangaList.map((manga, index) => {
-                      const title = Utils.Mangadex.getMangaTitle(manga);
-                      return (
-                        <MangaTile
-                          order={index}
-                          key={manga.id}
-                          title={title}
-                          manga={manga}
-                          hideCounter
-                        ></MangaTile>
-                      );
-                    })}
-                {newMangaListError && (
-                  <ErrorDisplay error={newMangaListError} />
-                )}
+                  : newMangaList.map((manga, index) => (
+                      <MangaTile
+                        key={manga.id}
+                        manga={manga}
+                        title={manga.title}
+                        order={index}
+                        icon={<FaClock />}
+                      />
+                    ))}
               </ul>
             </TabsContent>
           </Tabs>

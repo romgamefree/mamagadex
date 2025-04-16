@@ -2,30 +2,23 @@
 
 import React, { createContext, useCallback, useContext, useState } from "react";
 import { uniq } from "lodash";
+import { createClient } from '@supabase/supabase-js';
+import { MangaDetail } from '@/types/supabase';
 
-import {
-  ExtendManga,
-  GetMangasStatisticResponse,
-  MangaList,
-  MangaResponse,
-  MangaStatistic,
-} from "@/types/mangadex";
-import { MangadexApi } from "@/api";
-import { Utils } from "@/utils";
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-export type Mangas = { [k: string]: ExtendManga };
-export type MangaStatistics = Record<string, MangaStatistic>;
+export type Mangas = { [k: string]: MangaDetail };
+export type MangaStatistics = Record<string, { follows: number; rating: number }>;
 
 export const MangadexContext = createContext<{
   mangas: Mangas;
   mangaStatistics: MangaStatistics;
-  updateMangas: (
-    options: MangadexApi.Manga.GetSearchMangaRequestOptions,
-  ) => Promise<void>;
-  updateMangaStatistics: (
-    options: MangadexApi.Statistic.GetMangasStatisticRequestOptions,
-  ) => Promise<void>;
-  addMangas: (mangaList: ExtendManga[]) => void;
+  updateMangas: (ids: string[]) => Promise<void>;
+  updateMangaStatistics: (ids: string[]) => Promise<void>;
+  addMangas: (mangaList: MangaDetail[]) => void;
 }>({
   mangas: {},
   mangaStatistics: {},
@@ -43,112 +36,75 @@ export const MangadexContextProvider = ({
   const [mangaStatistics, setMangaStatistics] = useState<MangaStatistics>({});
 
   const updateMangas = useCallback(
-    async (options: MangadexApi.Manga.GetSearchMangaRequestOptions) => {
-      if (!options.includes) {
-        options.includes = [MangadexApi.Static.Includes.COVER_ART];
-      }
-      if (options.ids) {
-        options.ids = uniq(
-          options.ids.filter((id) => {
-            if (!mangas[id]) return true;
-            if (options.includes?.length === 1) return false;
-            if (
-              options.includes?.includes(MangadexApi.Static.Includes.AUTHOR) &&
-              !mangas[id].author?.attributes
-            )
-              return true;
-            if (
-              options.includes?.includes(MangadexApi.Static.Includes.ARTIST) &&
-              !mangas[id].artist?.attributes
-            )
-              return true;
-            return false;
-          }),
-        );
-      }
-      if (!options.includes.includes(MangadexApi.Static.Includes.COVER_ART)) {
-        options.includes.push(MangadexApi.Static.Includes.COVER_ART);
-      }
+    async (ids: string[]) => {
+      if (!ids.length) return;
 
-      // nothing to update
-      if (options.ids?.length === 0) return;
-
-      // only one
-      if (options.ids?.length === 1) {
-        const mangaId = options.ids[0];
-        const { data } = await MangadexApi.Manga.getMangaId(mangaId, {
-          includes: options.includes,
-        });
-        if (data && (data as MangaResponse).data) {
-          setMangas((prevMangas) => {
-            prevMangas[mangaId] = Utils.Mangadex.extendRelationship(
-              (data as MangaResponse).data,
-            ) as ExtendManga;
-            return { ...prevMangas };
-          });
-        }
-        return;
-      }
-
-      // rewrite
-      options.limit = 100;
-      options.contentRating = [
-        MangadexApi.Static.MangaContentRating.EROTICA,
-        MangadexApi.Static.MangaContentRating.PORNOGRAPHIC,
-        MangadexApi.Static.MangaContentRating.SAFE,
-        MangadexApi.Static.MangaContentRating.SUGGESTIVE,
-      ];
       try {
-        const { data } = await MangadexApi.Manga.getSearchManga(options);
-        if (data && (data as MangaList).data) {
+        const { data, error } = await supabase
+          .from('mangas')
+          .select('*')
+          .in('id', ids);
+
+        if (error) throw error;
+
+        if (data) {
           setMangas((prevMangas) => {
-            for (const manga of (data as MangaList).data) {
-              prevMangas[manga.id] = Utils.Mangadex.extendRelationship(
-                manga,
-              ) as ExtendManga;
+            const newMangas = { ...prevMangas };
+            for (const manga of data) {
+              newMangas[manga.id] = manga;
             }
-            return { ...prevMangas };
+            return newMangas;
           });
         }
       } catch (error) {
-        Utils.Error.handleError(error);
+        console.error('Error updating mangas:', error);
       }
     },
-    [mangas, setMangas],
+    [setMangas],
   );
 
   const addMangas = useCallback(
-    (mangaList: ExtendManga[]) => {
+    (mangaList: MangaDetail[]) => {
       setMangas((prevMangas) => {
+        const newMangas = { ...prevMangas };
         for (const manga of mangaList) {
-          prevMangas[manga.id] = Utils.Mangadex.extendRelationship(
-            manga,
-          ) as ExtendManga;
+          newMangas[manga.id] = manga;
         }
-        return { ...prevMangas };
+        return newMangas;
       });
     },
     [setMangas],
   );
 
   const updateMangaStatistics = useCallback(
-    async (options: MangadexApi.Statistic.GetMangasStatisticRequestOptions) => {
-      options.manga = uniq(options.manga.filter((id) => !mangaStatistics[id]));
-      if (options.manga.length === 0) return;
+    async (ids: string[]) => {
+      if (!ids.length) return;
+
       try {
-        const { data } =
-          await MangadexApi.Statistic.getMangasStatistic(options);
-        if (data && (data as GetMangasStatisticResponse).statistics) {
-          setMangaStatistics((prev) => ({
-            ...prev,
-            ...(data as GetMangasStatisticResponse).statistics,
-          }));
+        const { data, error } = await supabase
+          .from('mangas')
+          .select('id, follows, rating')
+          .in('id', ids);
+
+        if (error) throw error;
+
+        if (data) {
+          setMangaStatistics((prev) => {
+            const newStats = { ...prev };
+            for (const manga of data) {
+              newStats[manga.id] = {
+                follows: manga.follows || 0,
+                rating: manga.rating || 0,
+              };
+            }
+            return newStats;
+          });
         }
       } catch (error) {
-        Utils.Error.handleError(error);
+        console.error('Error updating manga statistics:', error);
       }
     },
-    [mangaStatistics, setMangaStatistics],
+    [setMangaStatistics],
   );
 
   return (

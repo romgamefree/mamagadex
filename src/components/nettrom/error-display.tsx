@@ -3,8 +3,6 @@
 import { AxiosError } from "axios";
 import { useCallback } from "react";
 
-import { MangadexApi } from "@/api";
-
 export const ErrorDisplay = (props: { error?: any; refresh?: Function }) => {
   const refreshPage = useCallback(() => {
     if (typeof window !== "undefined") window.location.reload();
@@ -15,9 +13,11 @@ export const ErrorDisplay = (props: { error?: any; refresh?: Function }) => {
   const error = props.error;
   if (error instanceof AxiosError) {
     errorMessage = error.response?.data?.message || error.message;
-  } else if (error instanceof MangadexApi.Utils.MangaDexError) {
-    errorMessage = error.response?.data?.message || error.message;
-  } else errorMessage = "Đã có lỗi xảy ra khi tải dữ liệu này";
+  } else if (error instanceof Error) {
+    errorMessage = error.message;
+  } else {
+    errorMessage = "Đã có lỗi xảy ra khi tải dữ liệu này";
+  }
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 text-center text-muted-foreground">

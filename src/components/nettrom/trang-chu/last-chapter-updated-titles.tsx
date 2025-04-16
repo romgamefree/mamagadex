@@ -4,20 +4,15 @@ import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useRouter } from "nextjs-toploader/app";
 
-import { useMangadex } from "@/contexts/mangadex";
-import { Utils } from "@/utils";
 import useReadingHistory from "@/hooks/useReadingHistory";
-import { useHomepageSeries } from "@/hooks/core/useHomepageSeries";
-import { useSettingsContext } from "@/contexts/settings";
-import { MangadexApi } from "@/api";
+import { useHomepageSeries } from "@/hooks/supabase/useHomepageSeries";
+import { Utils } from "@/utils";
 
 import Pagination from "../Pagination";
 import MangaTile, { MangaTileSkeleton } from "../manga-tile";
 import { ErrorDisplay } from "../error-display";
 
 export default function LastChapterUpdatedTitles() {
-  const { filteredContent } = useSettingsContext();
-
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -28,25 +23,6 @@ export default function LastChapterUpdatedTitles() {
     limit: 28,
     page,
   });
-
-  const { mangas, mangaStatistics, updateMangas, updateMangaStatistics } =
-    useMangadex();
-
-  useEffect(() => {
-    if (data?.data && data.data.length > 0) {
-      updateMangas({
-        ids: data?.data.map((c) => c.uuid),
-      });
-    }
-  }, [data]);
-
-  useEffect(() => {
-    if (data?.data && data.data.length > 0) {
-      updateMangaStatistics({
-        manga: data?.data.map((c) => c.uuid),
-      });
-    }
-  }, [data]);
 
   useEffect(() => {
     if (!data?.total) return;
@@ -64,38 +40,28 @@ export default function LastChapterUpdatedTitles() {
                     <MangaTileSkeleton />
                   </div>
                 ))
-              : data?.data.map((series) => {
-                  const mangaId = series.uuid;
-                  const coverArt = Utils.Mangadex.getCoverArt(mangas[mangaId]);
-                  const mangaTitle = Utils.Mangadex.getMangaTitle(
-                    mangas[mangaId],
-                  );
-                  const readedChapters = history[mangaId];
+              : data?.data.map((manga: { id: string; title: string; cover_image: string; follows: number; chapters: Array<{ id: string; title: string; updated_at: string }> }) => {
+                  const readedChapters = history[manga.id];
                   return (
                     <MangaTile
-                      id={mangaId}
-                      key={mangaId}
-                      thumbnail={coverArt}
-                      title={mangaTitle}
-                      chapters={series.chapters.map((chapter) => ({
-                        id: chapter.uuid,
+                      id={manga.id}
+                      key={manga.id}
+                      thumbnail={manga.cover_image}
+                      title={manga.title}
+                      chapters={manga.chapters.map((chapter: { id: string; title: string; updated_at: string }) => ({
+                        id: chapter.id,
                         title: chapter.title,
-                        updatedAt: chapter.md_updated_at,
+                        updatedAt: chapter.updated_at,
                         subTitle: Utils.Date.formatNowDistance(
-                          new Date(chapter.md_updated_at),
+                          new Date(chapter.updated_at),
                         ),
                       }))}
                       readedChapters={readedChapters}
-                      mangaStatistic={mangaStatistics[mangaId]}
-                      className={
-                        !filteredContent.includes(
-                          MangadexApi.Static.MangaContentRating.PORNOGRAPHIC,
-                        ) &&
-                        mangas[mangaId]?.attributes.contentRating ===
-                          MangadexApi.Static.MangaContentRating.PORNOGRAPHIC
-                          ? "blur"
-                          : ""
-                      }
+                      mangaStatistic={{
+                        follows: manga.follows,
+                        comments: { repliesCount: 0, threadId: 0 },
+                        rating: { average: 0, bayesian: 0 }
+                      }}
                     />
                   );
                 })}

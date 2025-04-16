@@ -1,10 +1,18 @@
 import Link from "next/link";
-
 import { Utils } from "@/utils";
 import { Constants } from "@/constants";
 import { DataLoader } from "@/components/DataLoader";
-import { ChapterList, ExtendChapter } from "@/types/mangadex";
 import Pagination from "../Pagination";
+
+interface Chapter {
+  id: string;
+  manga_id: string;
+  chapter_number: number;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  images: string[];
+}
 
 export default function ListChapter({
   mangaId,
@@ -13,8 +21,12 @@ export default function ListChapter({
   mangaId: string;
   onPageChange?: (page: number) => void;
   page: number;
-  data?: ChapterList;
-  items: ExtendChapter[];
+  data?: {
+    total: number;
+    offset: number;
+    data: Chapter[];
+  };
+  items: Chapter[];
 }) {
   return (
     <div id="nt_listchapter">
@@ -44,30 +56,20 @@ export default function ListChapter({
                       className="text-web-title transition visited:text-web-titleDisabled hover:text-web-titleLighter"
                       href={Constants.Routes.nettrom.chapter(chapter.id)}
                     >
-                      {Utils.Mangadex.getChapterTitle(chapter)}
+                      Chương {chapter.chapter_number} {chapter.title ? `- ${chapter.title}` : ""}
                     </Link>
                   </div>
                   <div className="no-wrap text-center text-muted-foreground">
-                    {Utils.Date.formatDateTime(
-                      new Date(chapter.attributes.readableAt),
-                    )}
+                    {Utils.Date.formatDateTime(new Date(chapter.updated_at))}
                   </div>
-                  {chapter.scanlation_group?.attributes && (
-                    <Link
-                      href={Constants.Routes.nettrom.scanlationGroup(
-                        chapter.scanlation_group.id,
-                      )}
-                      className="text-right text-web-title transition hover:text-web-titleLighter"
-                    >
-                      {chapter.scanlation_group.attributes.name}
-                    </Link>
-                  )}
+                  <div className="text-right text-muted-foreground">
+                    TruyệnDex
+                  </div>
                 </li>
               ))}
               {props.items.length === 0 && (
                 <li className="py-3 text-center text-muted-foreground">
-                  Không có chương nào. Bạn hãy thử đổi ngôn ngữ trong phần cài
-                  đặt.
+                  Không có chương nào.
                 </li>
               )}
             </ul>

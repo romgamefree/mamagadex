@@ -1,33 +1,57 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { MouseEvent, useCallback, useState } from "react";
+import { MouseEvent, useCallback, useState, useEffect } from "react";
 import { useRouter } from "nextjs-toploader/app";
+import { createClient } from '@supabase/supabase-js';
+import { MangaDetail } from '@/types/supabase';
 
 import { Utils } from "@/utils";
 import useDebounce from "@/hooks/useDebounce";
-import { useSearchManga } from "@/hooks/mangadex";
 import { DataLoader } from "@/components/DataLoader";
-import { MangadexApi } from "@/api";
 import Link from "next/link";
 import { Constants } from "@/constants";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function SearchInput() {
   const params = useSearchParams();
   const router = useRouter();
   const [title, setTitle] = useState(params.get("title") || "");
   const deboucedTitle = useDebounce(title, 500);
-  const { mangaList, isLoading, error } = useSearchManga(
-    {
-      title: deboucedTitle,
-      includes: [
-        MangadexApi.Static.Includes.ARTIST,
-        MangadexApi.Static.Includes.AUTHOR,
-        MangadexApi.Static.Includes.COVER_ART,
-      ],
-    },
-    { enable: !!deboucedTitle },
-  );
+  const [mangaList, setMangaList] = useState<MangaDetail[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchMangas = async () => {
+      if (!deboucedTitle) {
+        setMangaList([]);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('mangas')
+          .select('*')
+          .ilike('title', `%${deboucedTitle}%`)
+          .limit(10);
+
+        if (error) throw error;
+        setMangaList(data || []);
+      } catch (err) {
+        setError(err as Error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMangas();
+  }, [deboucedTitle]);
 
   const handleSubmit = (event: any) => {
     event.preventDefault();
@@ -80,11 +104,11 @@ export default function SearchInput() {
             }
             <ul>
               {mangaList.map((manga) => {
-                const title = Utils.Mangadex.getMangaTitle(manga);
-                const altTitles = Utils.Mangadex.getMangaAltTitles(manga);
-                const cover = Utils.Mangadex.getCoverArt(manga);
+                const title = manga.title;
+                const altTitles = manga.alt_titles || [];
+                const cover = manga.cover_image;
                 return (
-                  <li>
+                  <li key={manga.id}>
                     <Link
                       href={Constants.Routes.nettrom.manga(manga.id)}
                       onClick={clearTitle}
@@ -99,14 +123,11 @@ export default function SearchInput() {
                         <i>{altTitles.join(",")}</i>
                         <i>
                           <b>
-                            {manga.author?.attributes?.name || "N/A"} -{" "}
-                            {manga.artist?.attributes?.name || "N/A"}{" "}
+                            {manga.author || "N/A"} - {manga.artist || "N/A"}{" "}
                           </b>
                         </i>
                         <i>
-                          {manga.attributes.tags
-                            .map((t) => t.attributes.name.en)
-                            .join(", ")}
+                          {manga.genres?.join(", ")}
                         </i>
                       </h4>
                     </Link>
